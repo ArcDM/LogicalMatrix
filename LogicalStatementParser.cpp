@@ -5,6 +5,7 @@
 
  #include "LogicalStatementParser.h"
  #include <algorithm>
+ #include <sstream>
 
 /**Order of operations
  * ( )
@@ -24,6 +25,11 @@ LogicalStatementParser::Operator::Operator( const Operator &object_arg )
 {
     label = std::string( object_arg.label );
     negation = object_arg.negation;
+}
+
+bool LogicalStatementParser::Operator::operator ==( const LogicalStatementParser::Operator &other )
+{
+    return ( negation == other.negation ) && ( label.compare( other.label ) == 0 );
 }
 
 // Default constructor
@@ -145,6 +151,19 @@ std::vector< std::string > separate_by_OR( const std::string &input_string )
     std::string piece;
     size_t index, depth, last = 0, length = input_string.size();
 
+    auto add_identifier = [&]()
+    {
+        if( index - last > 0 )
+        {
+            std::string piece = input_string.substr( last, index - last );
+
+            if( trim( piece ) )
+            {
+                result.push_back( piece );
+            }
+        }
+    };
+
     for( index = 0; index < length; ++index )
     {
         switch( input_string[ index ] )
@@ -169,49 +188,25 @@ std::vector< std::string > separate_by_OR( const std::string &input_string )
 
                 break;
             case '|':
-                if( index - last > 0 )
-                {
-                    piece = input_string.substr( last, index - last );
+                add_identifier();
 
-                    if( trim( piece ) )
-                    {
-                        result.push_back( piece );
-                    }
-                }
-
-                index += ( index + 1 < length && input_string[ index + 1 ] == '|' )? 2 : 1;
-                last = index;
+                index += ( index + 1 < length && input_string[ index + 1 ] == '|' )? 1 : 0;
+                last = index + 1;
                 break;
             case 'O':
                 if( index + 1 < length && input_string[ index + 1 ] == 'R' )
                 {
-                    if( index - last > 0 )
-                    {
-                        piece = input_string.substr( last, index - last );
+                    add_identifier();
 
-                        if( trim( piece ) )
-                        {
-                            result.push_back( piece );
-                        }
-                    }
-
-                    index += 2;
-                    last = index;
+                    index += 1;
+                    last = index + 1;
                 }
 
                 break;
         }
     }
 
-    if( index - last > 0 )
-    {
-        piece = input_string.substr( last );
-
-        if( trim( piece ) )
-        {
-            result.push_back( piece );
-        }
-    }
+    add_identifier();
 
     return result;
 }
@@ -219,14 +214,28 @@ std::vector< std::string > separate_by_OR( const std::string &input_string )
 void LogicalStatementParser::separate_by_AND( const std::vector< std::string > OR_separated )
 {
     bool negated;
-    std::string piece;
     size_t index, depth, last, length;
+
+    auto add_identifier = [&]( std::vector< LogicalStatementParser::Operator > &input_set, const std::string &input_string )
+    {
+        if( index - last > 0 )
+        {
+            std::string piece = input_string.substr( last, index - last );
+
+            if( trim( piece ) )
+            {
+                input_set.push_back( Operator( piece, negated ) );
+                unique_identifiers.insert( piece );
+            }
+        }
+    };
 
     for( const std::string &statement : OR_separated )
     {
         std::vector< LogicalStatementParser::Operator > AND_set;
         length = statement.size();
         last = 0;
+        negated = false;
 
         for( index = 0; index < length; ++index )
         {
@@ -253,61 +262,39 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
                     break;*/
                 case '!':
                     negated = !negated;
+                    last = index + 1;
                     break;
                 case 'N':
                     if( index + 2 < length && statement[ index + 1 ] == 'O' && statement[ index + 2 ] == 'T' )
                     {
                         negated = !negated;
+                        index += 2;
+                        last = index + 1;
                     }
 
                     break;
                 case '&':
-                    if( index - last > 0 )
-                    {
-                        piece = statement.substr( last, index - last );
-
-                        if( trim( piece ) )
-                        {
-                            AND_set.push_back( Operator( piece, negated ) );
-                        }
-                    }
+                    add_identifier( AND_set, statement );
 
                     negated = false;
-                    index += ( index + 1 < length && statement[ index + 1 ] == '&' )? 2 : 1;
-                    last = index;
+                    index += ( index + 1 < length && statement[ index + 1 ] == '&' )? 1 : 0;
+                    last = index + 1;
                     break;
                 case 'A':
                     if( index + 2 < length && statement[ index + 1 ] == 'N' && statement[ index + 2 ] == 'D' )
                     {
-                        if( index - last > 0 )
-                        {
-                            piece = statement.substr( last, index - last );
-
-                            if( trim( piece ) )
-                            {
-                                AND_set.push_back( Operator( piece, negated ) );
-                            }
-                        }
+                        add_identifier( AND_set, statement );
 
                         negated = false;
-                        index += 3;
-                        last = index;
+                        index += 2;
+                        last = index + 1;
                     }
 
                     break;
             }
         }
 
-        if( index - last > 0 )
-        {
-            piece = statement.substr( last );
-
-            if( trim( piece ) )
-            {
-                AND_set.push_back( Operator( piece, negated ) );
-            }
-        }
-
+        add_identifier( AND_set, statement );
         operators.push_back( AND_set );
     }
 }
@@ -316,18 +303,6 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
 LogicalStatementParser::LogicalStatementParser( const std::string &input_string )
 {
     separate_by_AND( separate_by_OR( input_string ) );
-    /*std::cerr << input_string << std::endl;
-
-    for( auto &value : separate_by_OR( input_string ) )
-    {
-        std::cerr << "#" << value;
-    }
-
-    std::cerr << "#" << std::endl;*/
-
-    // separate each logical_statement by each OR
-
-
 }
 
 // Copy constructor
@@ -340,15 +315,17 @@ void LogicalStatementParser::negate()
 
 }
 
-std::vector< std::string > unique_identifiers()
+std::set< std::string > LogicalStatementParser::get_unique_identifiers()
 {
-    std::vector< std::string > result;
+    std::set< std::string > result = unique_identifiers;
     return result;
 }
 
 std::string LogicalStatementParser::to_string()
 {
-    return "";
+    std::ostringstream stringstream;
+    stringstream << *this;
+    return stringstream.str();
 }
 
 std::ostream &operator<<( std::ostream &output, const LogicalStatementParser &object_arg )
