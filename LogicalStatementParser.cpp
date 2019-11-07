@@ -21,15 +21,16 @@ LogicalStatementParser::Operator::Operator( const std::string input_string, cons
     negation = input_negation;
 }
 
-LogicalStatementParser::Operator::Operator( const Operator &object_arg )
-{
-    label = std::string( object_arg.label );
-    negation = object_arg.negation;
-}
-
-bool LogicalStatementParser::Operator::operator ==( const LogicalStatementParser::Operator &other )
+bool LogicalStatementParser::Operator::operator ==( const Operator &other )
 {
     return ( negation == other.negation ) && ( label.compare( other.label ) == 0 );
+}
+
+LogicalStatementParser::Operator LogicalStatementParser::Operator::operator !()
+{
+    Operator result( *this );
+    result.negation = !negation;
+    return result;
 }
 
 // Default constructor
@@ -61,7 +62,7 @@ static inline bool trim(std::string &s) {
     return !s.empty();
 }
 
-// utility fuction to split a string by a delimiter
+/*// utility fuction to split a string by a delimiter
 std::vector< std::string > split_string( const std::string &input_string, const std::string &delimiter )
 {
     std::vector< std::string > result;
@@ -95,9 +96,9 @@ std::vector< std::string > split_string( const std::string &input_string, const 
     }
 
     return result;
-}
+}*/
 
-// utility function to trim whitespace from each element of a vector and removing any empty elements
+/*// utility function to trim whitespace from each element of a vector and removing any empty elements
 static inline void trim( std::vector< std::string > &string_vector )
 {
     std::vector< std::string >::iterator iter = string_vector.begin();
@@ -114,18 +115,18 @@ static inline void trim( std::vector< std::string > &string_vector )
 
         ++iter;
     }
-}
+}*/
 
-// Debug print function
+/*// Debug print function
 static inline void debugprint( std::vector< std::string > &string_vector )
 {
     for( std::string &word : string_vector )
     {
         std::cerr << "DEBUG: #" << word << "#" << std::endl;
     }
-}
+}*/
 
-// Debug print function
+/*// Debug print function
 static inline void debugprint( std::vector< std::vector< std::string > > &string_vector )
 {
     size_t index, length;
@@ -143,7 +144,7 @@ static inline void debugprint( std::vector< std::vector< std::string > > &string
 
         std::cerr << std::endl;
     }
-}
+}*/
 
 std::vector< std::string > separate_by_OR( const std::string &input_string )
 {
@@ -241,25 +242,6 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
         {
             switch( statement[ index ] )
             {
-                /*case '(':
-                    depth = 1;
-
-                    for( ++index; index < length; ++index )
-                    {
-                        if( statement[ index ] == '(' )
-                        {
-                            ++depth;
-                        }
-                        else if( statement[ index ] == ')' )
-                        {
-                            if( --depth == 0 )
-                            {
-                                break;
-                            }
-                        }
-                    }
-
-                    break;*/
                 case '!':
                     negated = !negated;
                     last = index + 1;
@@ -305,20 +287,54 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
     separate_by_AND( separate_by_OR( input_string ) );
 }
 
-// Copy constructor
-LogicalStatementParser::LogicalStatementParser( const LogicalStatementParser &object_arg )
+/*// Copy constructor
+LogicalStatementParser::LogicalStatementParser( const LogicalStatementParser &other )
 {
-}
+    std::vector< std::vector< Operator > > copied_operators( other.operators );
+    operators = other.operators;
 
-void LogicalStatementParser::negate()
-{
-
-}
+    std::set< std::string > copied_unique_identifiers( other.unique_identifiers );
+    unique_identifiers = other.unique_identifiers;
+}*/
 
 std::set< std::string > LogicalStatementParser::get_unique_identifiers()
 {
     std::set< std::string > result = unique_identifiers;
     return result;
+}
+
+LogicalStatementParser LogicalStatementParser::operator !()
+{ // !((a & b) | (c & d)) = (!a | !b) & (!c | !d) = (!a & !c | !a & !d) | (!b & !c | !b & !d)
+    LogicalStatementParser new_parser( *this );
+    return new_parser;
+}
+
+LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatementParser &other )
+{
+    LogicalStatementParser new_parser( *this );
+    new_parser &= other;
+    return new_parser;
+}
+
+LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStatementParser &other )
+{ // ((a & b) | (c & d)) & ((e & f) | (g & h)) = (a & b & e & f) | (a & b & g & h) | (c & d & e & f) | (c & d & g & h)
+    // add other.operators to each of operators
+    // add other.unique_identifiers to each unique_identifiers
+    return *this;
+}
+
+LogicalStatementParser LogicalStatementParser::operator |( const LogicalStatementParser &other )
+{
+    LogicalStatementParser new_parser( *this );
+    new_parser |= other;
+    return new_parser;
+}
+
+LogicalStatementParser LogicalStatementParser::operator |=( const LogicalStatementParser &other )
+{
+    // add other.operators to operators
+    // add other.unique_identifiers to unique_identifiers
+    return *this;
 }
 
 std::string LogicalStatementParser::to_string()
