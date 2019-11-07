@@ -21,10 +21,8 @@ class LogicalStatementParser
                 bool negation;
 
                 Operator( const std::string input_string = "", const bool input_negation = false );
-                bool operator ==( const Operator &other );
+                bool operator ==( const Operator &other ) const;
                 Operator operator !();
-
-
         };
 
         // OR separated AND separated
@@ -35,19 +33,14 @@ class LogicalStatementParser
 
 
     public:
-        LogicalStatementParser();
         LogicalStatementParser( const std::string &input_string );
-        /*LogicalStatementParser( const LogicalStatementParser &other );
-        LogicalStatementParser( LogicalStatementParser &&other ) noexcept;
-        LogicalStatementParser& operator=( const LogicalStatementParser &other );
-        LogicalStatementParser& operator=( LogicalStatementParser &&other ) noexcept;*/
-        std::set< std::string > get_unique_identifiers();
-        std::string to_string();
+        std::set< std::string > get_unique_identifiers() const;
+        std::string to_string() const;
         friend std::ostream &operator<<( std::ostream &output, const LogicalStatementParser &object_arg );
-        LogicalStatementParser operator !();
-        LogicalStatementParser operator &( const LogicalStatementParser &other );
+        LogicalStatementParser operator !() const;
+        LogicalStatementParser operator &( const LogicalStatementParser &other ) const;
         LogicalStatementParser operator &=( const LogicalStatementParser &other );
-        LogicalStatementParser operator |( const LogicalStatementParser &other );
+        LogicalStatementParser operator |( const LogicalStatementParser &other ) const;
         LogicalStatementParser operator |=( const LogicalStatementParser &other );
 };
 

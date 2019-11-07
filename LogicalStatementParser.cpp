@@ -21,7 +21,7 @@ LogicalStatementParser::Operator::Operator( const std::string input_string, cons
     negation = input_negation;
 }
 
-bool LogicalStatementParser::Operator::operator ==( const Operator &other )
+bool LogicalStatementParser::Operator::operator ==( const Operator &other ) const
 {
     return ( negation == other.negation ) && ( label.compare( other.label ) == 0 );
 }
@@ -31,11 +31,6 @@ LogicalStatementParser::Operator LogicalStatementParser::Operator::operator !()
     Operator result( *this );
     result.negation = !negation;
     return result;
-}
-
-// Default constructor
-LogicalStatementParser::LogicalStatementParser()
-{
 }
 
 // credit to https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
@@ -297,19 +292,19 @@ LogicalStatementParser::LogicalStatementParser( const LogicalStatementParser &ot
     unique_identifiers = other.unique_identifiers;
 }*/
 
-std::set< std::string > LogicalStatementParser::get_unique_identifiers()
+std::set< std::string > LogicalStatementParser::get_unique_identifiers() const
 {
     std::set< std::string > result = unique_identifiers;
     return result;
 }
 
-LogicalStatementParser LogicalStatementParser::operator !()
+LogicalStatementParser LogicalStatementParser::operator !() const
 { // !((a & b) | (c & d)) = (!a | !b) & (!c | !d) = (!a & !c | !a & !d) | (!b & !c | !b & !d)
     LogicalStatementParser new_parser( *this );
     return new_parser;
 }
 
-LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatementParser &other )
+LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatementParser &other ) const
 {
     LogicalStatementParser new_parser( *this );
     new_parser &= other;
@@ -323,7 +318,7 @@ LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStateme
     return *this;
 }
 
-LogicalStatementParser LogicalStatementParser::operator |( const LogicalStatementParser &other )
+LogicalStatementParser LogicalStatementParser::operator |( const LogicalStatementParser &other ) const
 {
     LogicalStatementParser new_parser( *this );
     new_parser |= other;
@@ -332,12 +327,30 @@ LogicalStatementParser LogicalStatementParser::operator |( const LogicalStatemen
 
 LogicalStatementParser LogicalStatementParser::operator |=( const LogicalStatementParser &other )
 {
+    if( &other == this )
+    {
+        return *this;
+    }
+
     // add other.operators to operators
+    for( auto &op : other.operators )
+    {
+        if( find( operators.begin(), operators.end(), op ) == operators.end() )
+        { // if op doesnt exist in operators
+            operators.push_back( op );
+        }
+    }
+
     // add other.unique_identifiers to unique_identifiers
+    for( auto &identifier : other.unique_identifiers )
+    {
+        unique_identifiers.insert( identifier );
+    }
+
     return *this;
 }
 
-std::string LogicalStatementParser::to_string()
+std::string LogicalStatementParser::to_string() const
 {
     std::ostringstream stringstream;
     stringstream << *this;
