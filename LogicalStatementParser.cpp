@@ -232,7 +232,7 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
 
             if( trim( piece ) )
             {
-                input_set.push_back( Operator( piece, negated ) );
+                input_set.insert( Operator( piece, negated ) );
                 unique_identifiers.insert( piece );
             }
         }
@@ -284,7 +284,7 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
         }
 
         add_identifier( AND_set, statement );
-        operators.push_back( AND_set );
+        operators.insert( AND_set );
     }
 }
 
@@ -316,25 +316,43 @@ LogicalStatementParser LogicalStatementParser::operator !() const
     return new_parser;
 }
 
+LogicalStatementParser::statement_collection LogicalStatementParser::weave_operators( const LogicalStatementParser &other ) const
+{
+    statement_collection result_operators;
+
+    for( auto &leftoperator : operators )
+    {
+        for( auto &rightoperator : other.operators )
+        {
+            operator_collection statement;
+            statement.insert( leftoperator.begin(), leftoperator.end() );
+            statement.insert( rightoperator.begin(), rightoperator.end() );
+            result_operators.insert( statement );
+        }
+    }
+
+    return result_operators;
+}
+
 LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatementParser &other ) const
 {
-    LogicalStatementParser new_parser( *this );
-    new_parser &= other;
+    LogicalStatementParser new_parser;
+
+    new_parser.operators = weave_operators( other );
+
+    new_parser.unique_identifiers = unique_identifiers;
+
+    for( auto &identifier : other.unique_identifiers )
+    {
+        new_parser.unique_identifiers.insert( identifier );
+    }
+
     return new_parser;
 }
 
 LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStatementParser &other )
 { // ((a & b) | (c & d)) & ((e & f) | (g & h)) = (a & b & e & f) | (a & b & g & h) | (c & d & e & f) | (c & d & g & h)
-    statement_collection result_operators;
-    // add other.operators to each of operators
-    for( auto &leftoperator : operators )
-    {
-        for( auto &rightoperator : other.operators )
-        {
-            // statement = leftoperator + rightoperator
-            //operators.insert( statement );
-        }
-    }
+    operators = weave_operators( other );
 
     // add other.unique_identifiers to unique_identifiers
     for( auto &identifier : other.unique_identifiers )
@@ -362,10 +380,7 @@ LogicalStatementParser LogicalStatementParser::operator |=( const LogicalStateme
     // add other.operators to operators
     for( auto &op : other.operators )
     {
-        if( find( operators.begin(), operators.end(), op ) == operators.end() )
-        { // if op doesnt exist in operators
-            operators.push_back( op );
-        }
+        operators.insert( op );
     }
 
     // add other.unique_identifiers to unique_identifiers

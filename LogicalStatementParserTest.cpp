@@ -59,7 +59,16 @@ int main( int argc, char const *argv[] )
     {
         result = test( LogicalStatementParser( "a & b" ) | LogicalStatementParser( "c & d" ), "a & b | c & d" );
         result &= test( LogicalStatementParser( "a & b" ) | LogicalStatementParser( "a & b" ), "a & b" );
-        result &= test( LogicalStatementParser( "a & b" ) | LogicalStatementParser( "a | a & b | a & c" ), "a & b | a | a & c" );
+        result &= test( LogicalStatementParser( "a & b" ) | LogicalStatementParser( "a | a & b | a & c" ), "a | a & b | a & c" );
+
+        std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
+    }
+
+    if( true )
+    {
+        result = test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "c & d" ), "a & b & c & d" );
+        result &= test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "a & b" ), "a & b" );
+        result &= test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "a | a & b | a & c" ), "a & b | a & b & c" );
 
         std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
     }
