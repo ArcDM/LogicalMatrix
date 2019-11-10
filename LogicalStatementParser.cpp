@@ -26,6 +26,18 @@ bool LogicalStatementParser::Operator::operator ==( const Operator &other ) cons
     return ( negation == other.negation ) && ( label.compare( other.label ) == 0 );
 }
 
+bool LogicalStatementParser::Operator::operator <( const Operator &other ) const
+{
+    if( label.compare( other.label ) == 0 )
+    {
+        return ( other.negation )? false : negation;
+    }
+    else
+    {
+        return label < other.label;
+    }
+}
+
 LogicalStatementParser::Operator LogicalStatementParser::Operator::operator !()
 {
     Operator result( *this );
@@ -212,7 +224,7 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
     bool negated;
     size_t index, depth, last, length;
 
-    auto add_identifier = [&]( std::vector< LogicalStatementParser::Operator > &input_set, const std::string &input_string )
+    auto add_identifier = [&]( LogicalStatementParser::operator_collection &input_set, const std::string &input_string )
     {
         if( index - last > 0 )
         {
@@ -228,7 +240,7 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
 
     for( const std::string &statement : OR_separated )
     {
-        std::vector< LogicalStatementParser::Operator > AND_set;
+        LogicalStatementParser::operator_collection AND_set;
         length = statement.size();
         last = 0;
         negated = false;
@@ -285,7 +297,7 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
 /*// Copy constructor
 LogicalStatementParser::LogicalStatementParser( const LogicalStatementParser &other )
 {
-    std::vector< std::vector< Operator > > copied_operators( other.operators );
+    statement_collection copied_operators( other.operators );
     operators = other.operators;
 
     std::set< std::string > copied_unique_identifiers( other.unique_identifiers );
@@ -313,8 +325,23 @@ LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatemen
 
 LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStatementParser &other )
 { // ((a & b) | (c & d)) & ((e & f) | (g & h)) = (a & b & e & f) | (a & b & g & h) | (c & d & e & f) | (c & d & g & h)
+    statement_collection result_operators;
     // add other.operators to each of operators
-    // add other.unique_identifiers to each unique_identifiers
+    for( auto &leftoperator : operators )
+    {
+        for( auto &rightoperator : other.operators )
+        {
+            // statement = leftoperator + rightoperator
+            //operators.insert( statement );
+        }
+    }
+
+    // add other.unique_identifiers to unique_identifiers
+    for( auto &identifier : other.unique_identifiers )
+    {
+        unique_identifiers.insert( identifier );
+    }
+
     return *this;
 }
 
@@ -350,6 +377,16 @@ LogicalStatementParser LogicalStatementParser::operator |=( const LogicalStateme
     return *this;
 }
 
+bool LogicalStatementParser::operator ==( const LogicalStatementParser &other ) const
+{
+    return operators == other.operators;
+}
+
+bool LogicalStatementParser::operator <( const LogicalStatementParser &other ) const
+{
+    return operators < other.operators;
+}
+
 std::string LogicalStatementParser::to_string() const
 {
     std::ostringstream stringstream;
@@ -359,30 +396,34 @@ std::string LogicalStatementParser::to_string() const
 
 std::ostream &operator<<( std::ostream &output, const LogicalStatementParser &object_arg )
 {
-    size_t AND_index, AND_length, OR_index, OR_length = object_arg.operators.size();
+    bool first = true;
 
-    for( OR_index = 0; OR_index < OR_length; ++OR_index )
+    for( auto OR_separated : object_arg.operators )
     {
-        if( OR_index > 0 )
+        if( !first )
         {
             output << " | ";
         }
 
-        AND_length = object_arg.operators[ OR_index ].size();
+        first = true;
 
-        for( AND_index = 0; AND_index < AND_length; ++AND_index )
+        for( auto AND_separated : OR_separated )
         {
-            if( AND_index > 0 )
+            if( first )
+            {
+                first = false;
+            }
+            else
             {
                 output << " & ";
             }
 
-            if( object_arg.operators[ OR_index ][ AND_index ].negation )
+            if( AND_separated.negation )
             {
                 output << "!";
             }
 
-            output << object_arg.operators[ OR_index ][ AND_index ].label;
+            output << AND_separated.label;
         }
     }
 
