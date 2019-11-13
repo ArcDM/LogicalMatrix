@@ -164,10 +164,9 @@ static inline void debugprint( std::vector< std::vector< std::string > > &string
     }
 }*/
 
-std::vector< std::string > separate_by_OR( const std::string &input_string )
+std::vector< std::string > LogicalStatementParser::separate_by_OR( const std::string &input_string ) const
 {
     std::vector< std::string > result;
-    std::string piece;
     size_t index, depth, last = 0, length = input_string.size();
 
     auto add_identifier = [&]()
@@ -324,15 +323,16 @@ std::set< std::string > LogicalStatementParser::get_unique_identifiers() const
 LogicalStatementParser::statement_collection LogicalStatementParser::weave_operators( const statement_collection &other_operators ) const
 {
     statement_collection result_operators;
+    operator_collection temp_statement;
 
     for( auto &leftoperator : operators )
     {
         for( auto &rightoperator : other_operators )
         {
-            operator_collection statement;
-            statement.insert( leftoperator.begin(), leftoperator.end() );
-            statement.insert( rightoperator.begin(), rightoperator.end() );
-            result_operators.insert( statement );
+            temp_statement.insert( leftoperator.begin(), leftoperator.end() );
+            temp_statement.insert( rightoperator.begin(), rightoperator.end() );
+            result_operators.insert( temp_statement );
+            temp_statement.clear();
         }
     }
 
@@ -340,16 +340,36 @@ LogicalStatementParser::statement_collection LogicalStatementParser::weave_opera
 }
 
 LogicalStatementParser LogicalStatementParser::operator !() const
-{ // !((a & b) | (c & d)) = (!a | !b) & (!c | !d) = (!a & !c | !a & !d) | (!b & !c | !b & !d)
-    LogicalStatementParser new_parser( *this );
-
-    /*for( auto &statement_set : new_parser.operators )
+{ // !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = (!a & !c | !a & !d) | (b & !c | b & !d)
+    auto extract_operators = []( const LogicalStatementParser::operator_collection &input_set )
     {
-        for( auto &element : statement_set )
+        statement_collection result_operators;
+        operator_collection temp_statement;
+
+        for( auto &element : input_set )
         {
-            element = !element;
+            temp_statement.insert( !element );
+            result_operators.insert( temp_statement );
+            temp_statement.clear();
         }
-    }*/
+
+        return result_operators;
+    };
+
+    LogicalStatementParser new_parser;
+    statement_collection temp_ops;
+    LogicalStatementParser::statement_collection::iterator iter = operators.begin(), end = operators.end();
+
+    new_parser.operators = extract_operators( *iter );
+
+    for( ++iter; iter != end; ++iter )
+    {
+        temp_ops = extract_operators( *iter );
+        new_parser.operators = new_parser.weave_operators( temp_ops );
+        temp_ops.clear();
+    }
+
+    new_parser.unique_identifiers = unique_identifiers;
 
     return new_parser;
 }

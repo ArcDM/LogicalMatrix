@@ -32,6 +32,7 @@ class LogicalStatementParser
         statement_collection operators;
         std::set< std::string > unique_identifiers;
 
+        std::vector< std::string > separate_by_OR( const std::string &input_string ) const;
         void separate_by_AND( const std::vector< std::string > OR_separated );
         statement_collection weave_operators( const statement_collection &other_operators ) const;
 

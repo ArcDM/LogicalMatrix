@@ -79,6 +79,8 @@ int main( int argc, char const *argv[] )
         result = test( LogicalStatementParser( "a & b" ) | LogicalStatementParser( "c & d" ), "a & b | c & d" );
         result &= test( LogicalStatementParser( "a & b" ) | LogicalStatementParser( "a & b" ), "a & b" );
         result &= test( LogicalStatementParser( "a & b" ) | LogicalStatementParser( "a | a & b | a & c" ), "a | a & b | a & c" );
+        result &= test( LogicalStatementParser( "!a & b & c" ) | LogicalStatementParser( "d & !e & f" ) | LogicalStatementParser( "g & h & !i" ),
+            "!a & b & c | d & !e & f | g & h & !i" );
 
         std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
     }
@@ -88,17 +90,19 @@ int main( int argc, char const *argv[] )
         result = test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "c & d" ), "a & b & c & d" );
         result &= test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "a & b" ), "a & b" );
         result &= test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "a | a & b | a & c" ), "a & b | a & b & c" );
+        result &= test( LogicalStatementParser( "!a | b | c" ) & LogicalStatementParser( "d | !e | f" ) & LogicalStatementParser( "g | h | !i" ),
+            "!a & d & g | !a & d & h | !a & d & !i | !a & !e & g | !a & !e & h | !a & !e & !i | !a & f & g | !a & f & h | !a & f & !i | b & d & g | b & d & h | b & d & !i | b & !e & g | b & !e & h | b & !e & !i | b & f & g | b & f & h | b & f & !i | c & d & g | c & d & h | c & d & !i | c & !e & g | c & !e & h | c & !e & !i | c & f & g | c & f & h | c & f & !i" );
 
         std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
     }
 
     if( true )
     {
-        LogicalStatementParser testParser1( "a & b" );
-        LogicalStatementParser testParser2( testParser1 );
-        testParser1.clear();
-        result = test( testParser2, "a & b" );
-        result &= test( testParser1, "" );
+        result = test( !LogicalStatementParser( "a & b" ), "!a | !b");
+        result &= test( !LogicalStatementParser( "!a | !b" ), "a & b");
+        result &= test( !LogicalStatementParser( "a & !b | c & d" ), "!a & !c | !a & !d | b & !c | b & !d" );
+        result &= test( !LogicalStatementParser( "!a & b & c | d & !e & f | g & h & !i" ),
+            "a & !d & !g | a & !d & !h | a & !d & i | a & e & !g | a & e & !h | a & e & i | a & !f & !g | a & !f & !h | a & !f & i | !b & !d & !g | !b & !d & !h | !b & !d & i | !b & e & !g | !b & e & !h | !b & e & i | !b & !f & !g | !b & !f & !h | !b & !f & i | !c & !d & !g | !c & !d & !h | !c & !d & i | !c & e & !g | !c & e & !h | !c & e & i | !c & !f & !g | !c & !f & !h | !c & !f & i" );
 
         std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
     }
@@ -115,7 +119,7 @@ int main( int argc, char const *argv[] )
 
     LogicalStatementParser test6( "(a & c) OR (b & d)" ); // = a & c | b & d
 
-    LogicalStatementParser test7( "!(a | b) | !( c & d ) | !(!a) | !!a" ); //  = !a & !b | !c | !d | a | a
+    LogicalStatementParser test7( "!(a | b) | !( c & d ) | !(!a) | !!a" ); //  = !a & !b | !c | !d | a
 
     LogicalStatementParser test8( "a & ( b | ( c & d ) )" ); // = a & b | a & c & d
 
