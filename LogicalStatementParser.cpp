@@ -38,11 +38,22 @@ bool LogicalStatementParser::Operator::operator <( const Operator &other ) const
     }
 }
 
-LogicalStatementParser::Operator LogicalStatementParser::Operator::operator !()
+LogicalStatementParser::Operator LogicalStatementParser::Operator::operator !() const
 {
     Operator result( *this );
     result.negation = !negation;
     return result;
+}
+
+bool LogicalStatementParser::empty() const
+{
+    return operators.empty();
+}
+
+void LogicalStatementParser::clear()
+{
+    operators.clear();
+    unique_identifiers.clear();
 }
 
 // credit to https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
@@ -310,19 +321,13 @@ std::set< std::string > LogicalStatementParser::get_unique_identifiers() const
     return result;
 }
 
-LogicalStatementParser LogicalStatementParser::operator !() const
-{ // !((a & b) | (c & d)) = (!a | !b) & (!c | !d) = (!a & !c | !a & !d) | (!b & !c | !b & !d)
-    LogicalStatementParser new_parser( *this );
-    return new_parser;
-}
-
-LogicalStatementParser::statement_collection LogicalStatementParser::weave_operators( const LogicalStatementParser &other ) const
+LogicalStatementParser::statement_collection LogicalStatementParser::weave_operators( const statement_collection &other_operators ) const
 {
     statement_collection result_operators;
 
     for( auto &leftoperator : operators )
     {
-        for( auto &rightoperator : other.operators )
+        for( auto &rightoperator : other_operators )
         {
             operator_collection statement;
             statement.insert( leftoperator.begin(), leftoperator.end() );
@@ -334,11 +339,26 @@ LogicalStatementParser::statement_collection LogicalStatementParser::weave_opera
     return result_operators;
 }
 
+LogicalStatementParser LogicalStatementParser::operator !() const
+{ // !((a & b) | (c & d)) = (!a | !b) & (!c | !d) = (!a & !c | !a & !d) | (!b & !c | !b & !d)
+    LogicalStatementParser new_parser( *this );
+
+    /*for( auto &statement_set : new_parser.operators )
+    {
+        for( auto &element : statement_set )
+        {
+            element = !element;
+        }
+    }*/
+
+    return new_parser;
+}
+
 LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatementParser &other ) const
 {
     LogicalStatementParser new_parser;
 
-    new_parser.operators = weave_operators( other );
+    new_parser.operators = weave_operators( other.operators );
 
     new_parser.unique_identifiers = unique_identifiers;
 
@@ -352,7 +372,7 @@ LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatemen
 
 LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStatementParser &other )
 { // ((a & b) | (c & d)) & ((e & f) | (g & h)) = (a & b & e & f) | (a & b & g & h) | (c & d & e & f) | (c & d & g & h)
-    operators = weave_operators( other );
+    operators = weave_operators( other.operators );
 
     // add other.unique_identifiers to unique_identifiers
     for( auto &identifier : other.unique_identifiers )

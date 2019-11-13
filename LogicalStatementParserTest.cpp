@@ -22,9 +22,28 @@ bool test( const LogicalStatementParser &test_parser, const std::string &expecte
 {
     bool result = expected.compare( test_parser.to_string() ) == 0;
 
-    std::cout << "Result: " << test_parser << std::endl
-        << "Test "<< ( result? "passed" : "FAILED" ) << std::endl
-        << "Unique Identifiers: " << test_parser.get_unique_identifiers() << std::endl; // spaced to comment out
+    std::cout << "Result: ";
+
+    if( test_parser.empty() )
+    {
+        std::cout << "is empty";
+    }
+    else
+    {
+        std::cout << test_parser;
+    }
+
+    std::cout << std::endl << "Test "<< ( result? "passed" : "FAILED" ) << std::endl
+        << "Unique Identifiers: "; // spaced to comment out
+
+    if( test_parser.empty() )
+    {
+        std::cout << "none" << std::endl;
+    }
+    else
+    {
+        std::cout << test_parser.get_unique_identifiers() << std::endl;
+    }
 
     return result;
 }
@@ -69,6 +88,17 @@ int main( int argc, char const *argv[] )
         result = test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "c & d" ), "a & b & c & d" );
         result &= test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "a & b" ), "a & b" );
         result &= test( LogicalStatementParser( "a & b" ) & LogicalStatementParser( "a | a & b | a & c" ), "a & b | a & b & c" );
+
+        std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
+    }
+
+    if( true )
+    {
+        LogicalStatementParser testParser1( "a & b" );
+        LogicalStatementParser testParser2( testParser1 );
+        testParser1.clear();
+        result = test( testParser2, "a & b" );
+        result &= test( testParser1, "" );
 
         std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
     }

@@ -23,7 +23,7 @@ class LogicalStatementParser
                 Operator( const std::string input_string = "", const bool input_negation = false );
                 bool operator ==( const Operator &other ) const;
                 bool operator <( const Operator &other ) const;
-                Operator operator !();
+                Operator operator !() const;
         };
 
         typedef std::set< Operator > operator_collection; // AND separated
@@ -33,8 +33,7 @@ class LogicalStatementParser
         std::set< std::string > unique_identifiers;
 
         void separate_by_AND( const std::vector< std::string > OR_separated );
-        statement_collection weave_operators( const LogicalStatementParser &other ) const;
-
+        statement_collection weave_operators( const statement_collection &other_operators ) const;
 
     public:
         LogicalStatementParser() {}
@@ -49,6 +48,8 @@ class LogicalStatementParser
         LogicalStatementParser operator |=( const LogicalStatementParser &other );
         bool operator ==( const LogicalStatementParser &other ) const;
         bool operator <( const LogicalStatementParser &other ) const;
+        bool empty() const;
+        void clear();
 };
 
 #endif
