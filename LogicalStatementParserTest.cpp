@@ -50,10 +50,46 @@ bool test( const LogicalStatementParser &test_parser, const std::string &expecte
 
 bool test( const std::string &tested, const std::string &expected )
 {
-    LogicalStatementParser test_parser( tested );
+    try
+    {
+        LogicalStatementParser test_parser( tested );
 
-    std::cout << "Testing \"" << tested << "\" and \"" << expected << "\"" << std::endl;
-    return test( test_parser, expected );
+        std::cout << "Testing \"" << tested << "\" and \"" << expected << "\"" << std::endl;
+        return test( test_parser, expected );
+    }
+    catch( LogicalStatementParser::Logicalstatementexception &e )
+    {
+        std::cout << "Error caught for \"" << tested << "\": \"" << e.what() << "\"" << std::endl << "Test FAILED" << std::endl;
+    }
+
+    return false;
+}
+
+bool test_error( const std::string &tested )
+{
+    try
+    {
+        LogicalStatementParser test_parser( tested );
+
+        std::cout << "Result: ";
+
+        if( test_parser.empty() )
+        {
+            std::cout << "is empty" << std::endl;
+        }
+        else
+        {
+            std::cout << test_parser << std::endl;
+        }
+    }
+    catch( LogicalStatementParser::Logicalstatementexception &e )
+    {
+        std::cout << "Error caught for \"" << tested << "\": \"" << e.what() << "\"" << std::endl << "Test passed" << std::endl;
+        return true;
+    }
+
+    std::cout << "No error caught for \"" << tested << "\"" << std::endl << "Test FAILED" << std::endl;
+    return false;
 }
 
 int main( int argc, char const *argv[] )
@@ -64,7 +100,7 @@ int main( int argc, char const *argv[] )
     {
         result = test( " a & b & c & space space", "a & b & c & space space" );
         result &= test( " NOT a AND b & c OR d ", "!a & b & c | d" );
-        result &= test( "a & !b | c & d ", "a & !b | c & d" );
+        result &= test( "a && !b || c & d ", "a & !b | c & d" );
         result &= test( "a &  b | !c | space     space", "a & b | !c | space     space" );
         result &= test( "a  |  b & c & !   d", "a | b & c & !d" );
         result &= test( "!a|b&c|!d", "!a | b & c | !d" );
@@ -107,23 +143,39 @@ int main( int argc, char const *argv[] )
         std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
     }
 
-    /*LogicalStatementParser test1( " a & (b || c) | d" ); // = a & b | a & c | d
+    if( true )
+    {
+        result = test( " a & (b || c) | d", "a & b | a & c | d" );
+        result &= test( "a && (b | c) & d ", "a & b & d | a & c & d" );
+        result &= test( "a || (b && c) & d", "a | c & b & d" );
+        result &= test( "a | (c & b) | d", "a | c & b | d" );
+        result &= test( "(a | c) AND (b | d)", "a & b | a & d | c & b | c & d" );
+        result &= test( "(a & c) OR (b & d)", "a & c | b & d" );
+        result &= test( "!(a | b) | !( c & d ) | !(!a) | !!a", "!a & !b | !c | !d | a" );
+        result &= test( "a & ( b | ( c & d ) )", "a & b | a & c & d" );
+        result &= test( " a & ( b & ( c | d ) ) ", "a & b & c | a & b & d" );
 
-    LogicalStatementParser test2( "a && (b | c) & d " ); // = a & b & d | a & c & d
+        std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
+    }
 
-    LogicalStatementParser test3( "a || (b && c) & d" ); // = a | c & b & d
+    if( true )
+    {
+        result = test_error( "a |" );
+        result &= test_error( "| b" );
+        result &= test_error( "a &" );
+        result &= test_error( "& b" );
+        result &= test_error( "& b | c & d" );
+        result &= test_error( "a & | c & d" );
+        result &= test_error( "a & b | & d" );
+        result &= test_error( "a & b | c &" );
+        result &= test_error( "a & b |" );
+        result &= test_error( "| c & d" );
+        result &= test_error( "( a" );
+        result &= test_error( "a )" );
+        result &= test_error( "!" );
 
-    LogicalStatementParser test4( "a | (c & b) | d" ); // = a | c & b | d
-
-    LogicalStatementParser test5( "(a | c) AND (b | d)" ); // = a & b | a & d | c & b | c & d
-
-    LogicalStatementParser test6( "(a & c) OR (b & d)" ); // = a & c | b & d
-
-    LogicalStatementParser test7( "!(a | b) | !( c & d ) | !(!a) | !!a" ); //  = !a & !b | !c | !d | a
-
-    LogicalStatementParser test8( "a & ( b | ( c & d ) )" ); // = a & b | a & c & d
-
-    LogicalStatementParser test9( " a & ( b & ( c | d ) ) " ); //  = a & b & c | a & b & d*/
+        std::cout << std::endl << "Tests "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
+    }
 
     std::cout << "End testing" << std::endl;
     return 0;

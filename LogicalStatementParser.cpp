@@ -178,8 +178,11 @@ std::vector< std::string > LogicalStatementParser::separate_by_OR( const std::st
             if( trim( piece ) )
             {
                 result.push_back( piece );
+                return;
             }
         }
+
+        throw Logicalstatementexception();
     };
 
     for( index = 0; index < length; ++index )
@@ -204,6 +207,14 @@ std::vector< std::string > LogicalStatementParser::separate_by_OR( const std::st
                     }
                 }
 
+                if( depth > 0 )
+                {
+                    throw Logicalstatementexception();
+                }
+
+                break;
+            case ')':
+                throw Logicalstatementexception();
                 break;
             case '|':
                 add_identifier();
@@ -231,8 +242,10 @@ std::vector< std::string > LogicalStatementParser::separate_by_OR( const std::st
 
 void LogicalStatementParser::separate_by_AND( const std::vector< std::string > OR_separated )
 {
-    bool negated;
+    LogicalStatementParser temp_parser;
+    LogicalStatementParser::operator_collection AND_set;
     size_t index, depth, last, length;
+    bool negated;
 
     auto add_identifier = [&]( LogicalStatementParser::operator_collection &input_set, const std::string &input_string )
     {
@@ -243,14 +256,16 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
             if( trim( piece ) )
             {
                 input_set.insert( Operator( piece, negated ) );
-                unique_identifiers.insert( piece );
+                temp_parser.unique_identifiers.insert( piece );
+                return;
             }
         }
+
+        throw Logicalstatementexception();
     };
 
     for( const std::string &statement : OR_separated )
     {
-        LogicalStatementParser::operator_collection AND_set;
         length = statement.size();
         last = 0;
         negated = false;
@@ -259,6 +274,37 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
         {
             switch( statement[ index ] )
             {
+                case '(':
+                    depth = 1;
+
+                    for( ++index; index < length; ++index )
+                    {
+                        if( statement[ index ] == '(' )
+                        {
+                            ++depth;
+                        }
+                        else if( statement[ index ] == ')' )
+                        {
+                            if( --depth == 0 )
+                            {
+                                break;
+                            }
+                        }
+                    }
+
+                    if( depth > 0 )
+                    {
+                        throw Logicalstatementexception();
+                    }
+                    
+                    // create new LogicalStatementParser with the string within the parenthesies
+                    // remove string and parenthesies from statement
+                    // add the new LogicalStatementParser to a set to be & with
+
+                    break;
+                case ')':
+                    throw Logicalstatementexception();
+                    break;
                 case '!':
                     negated = !negated;
                     last = index + 1;
@@ -294,7 +340,12 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
         }
 
         add_identifier( AND_set, statement );
-        operators.insert( AND_set );
+        temp_parser.operators.insert( AND_set );
+        AND_set.clear();
+
+        // temp_parser &= each paren_parser
+        *this |= temp_parser;
+        temp_parser.clear();
     }
 }
 
@@ -303,16 +354,6 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
 {
     separate_by_AND( separate_by_OR( input_string ) );
 }
-
-/*// Copy constructor
-LogicalStatementParser::LogicalStatementParser( const LogicalStatementParser &other )
-{
-    statement_collection copied_operators( other.operators );
-    operators = other.operators;
-
-    std::set< std::string > copied_unique_identifiers( other.unique_identifiers );
-    unique_identifiers = other.unique_identifiers;
-}*/
 
 std::set< std::string > LogicalStatementParser::get_unique_identifiers() const
 {

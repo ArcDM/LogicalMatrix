@@ -6,10 +6,11 @@
 #ifndef __LogicalStatementParser_h_included__
 #define __LogicalStatementParser_h_included__
 
-#include <vector>
-#include <string>
+#include <exception>
 #include <iostream>
 #include <set>
+#include <string>
+#include <vector>
 
 class LogicalStatementParser
 {
@@ -37,6 +38,15 @@ class LogicalStatementParser
         statement_collection weave_operators( const statement_collection &other_operators ) const;
 
     public:
+        class Logicalstatementexception: public std::exception
+        {
+            public:
+                virtual const char* what() const throw()
+                {
+                    return "Malformed logical statement";
+                }
+        };
+
         LogicalStatementParser() {}
         LogicalStatementParser( const std::string &input_string );
         std::set< std::string > get_unique_identifiers() const;
