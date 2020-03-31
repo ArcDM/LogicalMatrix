@@ -175,17 +175,18 @@ int main( int argc, char const *argv[] )
         }
     }
 
-    if( !true )
+    if( true )
     {
         result &= test( " a & (b || c) | d", "a & b | a & c | d" );
         result &= test( "a && (b | c) & d ", "a & b & d | a & c & d" );
-        result &= test( "a || (b && c) & d", "a | c & b & d" );
-        result &= test( "a | (c & b) | d", "a | c & b | d" );
-        result &= test( "(a | c) AND (b | d)", "a & b | a & d | c & b | c & d" );
+        result &= test( "a || (b && c) & d", "a | b & c & d" );
+        result &= test( "a | (c & b) | d", "a | b & c | d" );
+        result &= test( "(a | c) AND (b | d)", "a & b | a & d | b & c | c & d" );
         result &= test( "(a & c) OR (b & d)", "a & c | b & d" );
-        result &= test( "!(a | b) | !( c & d ) | !(!a) | !!a", "!a & !b | !c | !d | a" );
+        result &= test( "!(a | b) | !( c & d ) | !(!a) | !!a", "!a & !b | a | !c | !d" );
         result &= test( "a & ( b | ( c & d ) )", "a & b | a & c & d" );
         result &= test( " a & ( b & ( c | d ) ) ", "a & b & c | a & b & d" );
+        result &= test( "((a & b))", "a & b" );
     }
 
     if( true )

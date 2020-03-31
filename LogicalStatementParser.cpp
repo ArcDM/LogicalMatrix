@@ -86,9 +86,9 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
 {
     size_t index, depth, last = 0, length = input_string.size();
     LogicalStatementParser temp_parser, cumulative_AND;
-    bool negated = false;
+    bool negated = false, recursive_LSP = false, not_empty = false;
 
-    auto AND_identifier = [&]()
+    auto PAREN_identifier = [&]()
     {
         if( index - last > 0 )
         {
@@ -96,14 +96,44 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
 
             if( trim( piece ) )
             {
-                temp_parser.operators.insert( { Operator( piece, negated ) } );
-                negated = false;
+                temp_parser = LogicalStatementParser( piece );
 
-                cumulative_AND &= temp_parser;
-                temp_parser.clear();
-                unique_identifiers.insert( piece );
+                if( negated )
+                {
+                    temp_parser = !temp_parser;
+                    negated = false;
+                }
+
+                recursive_LSP = true;
                 return;
             }
+        }
+
+        throw Logicalstatementexception();
+    };
+
+    auto AND_identifier = [&]()
+    {
+        if( index - last > 0 )
+        {
+            std::string piece = input_string.substr( last, index - last );
+
+            not_empty = trim( piece );
+
+            if( not_empty )
+            {
+                temp_parser.operators.insert( { Operator( piece, negated ) } );
+                negated = false;
+                unique_identifiers.insert( piece );
+            }
+        }
+
+        if( not_empty ^ recursive_LSP )
+        {
+            recursive_LSP = not_empty = false;
+            cumulative_AND &= temp_parser;
+            temp_parser.clear();
+            return;
         }
 
         throw Logicalstatementexception();
@@ -123,9 +153,9 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
         {
             case '(':
                 depth = 1;
-                //last = ++index;
+                last = ++index;
 
-                for( ++index; index < length; ++index )
+                for( ; index < length; ++index )
                 {
                     if( input_string[ index ] == '(' )
                     {
@@ -145,6 +175,8 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
                     throw Logicalstatementexception();
                 }
 
+                PAREN_identifier();
+                last = index + 1;
                 // create new LogicalStatementParser with the string within the parenthesies
                 // remove string and parenthesies from statement
                 // add the new LogicalStatementParser to a set to be & with
