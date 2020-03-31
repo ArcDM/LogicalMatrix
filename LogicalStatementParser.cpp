@@ -296,7 +296,7 @@ void LogicalStatementParser::separate_by_AND( const std::vector< std::string > O
                     {
                         throw Logicalstatementexception();
                     }
-                    
+
                     // create new LogicalStatementParser with the string within the parenthesies
                     // remove string and parenthesies from statement
                     // add the new LogicalStatementParser to a set to be & with
@@ -419,7 +419,22 @@ LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatemen
 {
     LogicalStatementParser new_parser;
 
-    new_parser.operators = weave_operators( other.operators );
+    if( !other.empty() )
+    {
+        if( !empty() )
+        {
+            new_parser.operators = weave_operators( other.operators );
+        }
+        else
+        {
+            new_parser.operators = other.operators;
+        }
+    }
+    else
+    {
+        new_parser.operators = operators;
+    }
+
 
     new_parser.unique_identifiers = unique_identifiers;
 
@@ -433,9 +448,18 @@ LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatemen
 
 LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStatementParser &other )
 { // ((a & b) | (c & d)) & ((e & f) | (g & h)) = (a & b & e & f) | (a & b & g & h) | (c & d & e & f) | (c & d & g & h)
-    operators = weave_operators( other.operators );
+    if( !other.empty() )
+    {
+        if( !empty() )
+        {
+            operators = weave_operators( other.operators );
+        }
+        else
+        {
+            operators = other.operators;
+        }
+    }
 
-    // add other.unique_identifiers to unique_identifiers
     for( auto &identifier : other.unique_identifiers )
     {
         unique_identifiers.insert( identifier );
