@@ -204,6 +204,8 @@ int main( int argc, char const *argv[] )
         result &= test_error( "( a" );
         result &= test_error( "a )" );
         result &= test_error( "!" );
+        result &= test_error( "()" );
+        result &= test_error( "" );
     }
 
     std::cout << std::endl << ( result? "All tests passed" : "Tests FAILED" ) << std::endl << "End testing" << std::endl;

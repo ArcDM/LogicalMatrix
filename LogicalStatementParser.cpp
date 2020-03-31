@@ -1,6 +1,11 @@
 // LogicalStatementParser.cpp
 
 /** Implementation file for the LogicalStatementParser class.
+ *
+ *  This implementation does not handle collapsing of statements such as
+ *      A & B | A = A
+ *      A | !A = TRUE
+ *      A & !A = FALSE
  */
 
  #include "LogicalStatementParser.h"
@@ -82,6 +87,7 @@ static inline bool trim(std::string &s) {
 
 // Construct from parsing a string
 // This is where the class parses the string
+// Recursion is possible depending on the input_string
 LogicalStatementParser::LogicalStatementParser( const std::string &input_string )
 {
     size_t index, depth, last = 0, length = input_string.size();
@@ -177,9 +183,6 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
 
                 PAREN_identifier();
                 last = index + 1;
-                // create new LogicalStatementParser with the string within the parenthesies
-                // remove string and parenthesies from statement
-                // add the new LogicalStatementParser to a set to be & with
 
                 break;
             case ')':
@@ -242,6 +245,7 @@ std::set< std::string > LogicalStatementParser::get_unique_identifiers() const
     return result;
 }
 
+// A helper function to combine (AND) operator sets
 LogicalStatementParser::statement_collection LogicalStatementParser::weave_operators( const statement_collection &other_operators ) const
 {
     statement_collection result_operators;
@@ -261,8 +265,10 @@ LogicalStatementParser::statement_collection LogicalStatementParser::weave_opera
     return result_operators;
 }
 
+// Negation
+// !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = !a & !c | !a & !d | b & !c | b & !d
 LogicalStatementParser LogicalStatementParser::operator !() const
-{ // !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = (!a & !c | !a & !d) | (b & !c | b & !d)
+{
     auto extract_operators = []( const LogicalStatementParser::operator_collection &input_set )
     {
         statement_collection result_operators;
@@ -296,6 +302,7 @@ LogicalStatementParser LogicalStatementParser::operator !() const
     return new_parser;
 }
 
+// AND yealding a new object
 LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatementParser &other ) const
 {
     LogicalStatementParser new_parser;
@@ -327,8 +334,10 @@ LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatemen
     return new_parser;
 }
 
+// AND assignment
+// ((a & b) | (c & d)) & ((e & f) | (g & h)) = a & b & e & f | a & b & g & h | c & d & e & f | c & d & g & h
 LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStatementParser &other )
-{ // ((a & b) | (c & d)) & ((e & f) | (g & h)) = (a & b & e & f) | (a & b & g & h) | (c & d & e & f) | (c & d & g & h)
+{
     if( !other.empty() )
     {
         if( !empty() )
@@ -349,6 +358,7 @@ LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStateme
     return *this;
 }
 
+// OR yealding a new object
 LogicalStatementParser LogicalStatementParser::operator |( const LogicalStatementParser &other ) const
 {
     LogicalStatementParser new_parser( *this );
@@ -356,6 +366,7 @@ LogicalStatementParser LogicalStatementParser::operator |( const LogicalStatemen
     return new_parser;
 }
 
+// OR assignment
 LogicalStatementParser LogicalStatementParser::operator |=( const LogicalStatementParser &other )
 {
     if( &other == this )
