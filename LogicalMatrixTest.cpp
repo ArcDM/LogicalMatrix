@@ -1,14 +1,14 @@
-// LogicalStatementParserTest.cpp
+// LogicalMatrixTest.cpp
 
-/** This file is used to test the correctness of the LogicalStatementParser class
+/** This file is used to test the correctness of the LogicalMatrix class
  */
 
 #include <iostream>
 #include <string>
-#include "LogicalStatementParser.h"
-#include "LogicalStatementParser.cpp"
+#include "LogicalMatrix.h"
+#include "LogicalMatrix.cpp"
 
-// used to print unique identifiers from LogicalStatementParser
+// used to print unique identifiers from LogicalMatrix
 std::ostream &operator<<( std::ostream &output, const std::set< std::string > &object_arg )
 {
     for( auto &value : object_arg )
@@ -19,8 +19,8 @@ std::ostream &operator<<( std::ostream &output, const std::set< std::string > &o
     return output;
 }
 
-// Testing function for a given LogicalStatementParser versus the expected result
-bool test( const LogicalStatementParser &test_parser, const std::string &expected, const bool &display = false )
+// Testing function for a given LogicalMatrix versus the expected result
+bool test( const LogicalMatrix &test_parser, const std::string &expected, const bool &display = false )
 {
     bool result = expected.compare( test_parser.to_string() ) == 0;
 
@@ -65,11 +65,11 @@ bool test( const std::string &tested, const std::string &expected, const bool &d
 {
     try
     {
-        LogicalStatementParser test_parser( tested );
+        LogicalMatrix test_parser( tested );
 
         return test( test_parser, expected, display );
     }
-    catch( LogicalStatementParser::Logicalstatementexception &e )
+    catch( LogicalMatrix::Logicalstatementexception &e )
     {
         std::cout << "Testing \"" << tested << "\" and \"" << expected << "\"" << std::endl
             << "Error caught for \"" << tested << "\": \"" << e.what() << "\"" << std::endl << "Test FAILED" << std::endl << std::endl;
@@ -85,7 +85,7 @@ bool test_error( const std::string &tested, const bool &display = false )
 
     try
     {
-        LogicalStatementParser test_parser( tested );
+        LogicalMatrix test_parser( tested );
 
         if( test_parser.empty() )
         {
@@ -96,7 +96,7 @@ bool test_error( const std::string &tested, const bool &display = false )
             result = test_parser.to_string();
         }
     }
-    catch( LogicalStatementParser::Logicalstatementexception &e )
+    catch( LogicalMatrix::Logicalstatementexception &e )
     {
         if( display )
         {
@@ -131,12 +131,12 @@ int main( int argc, char const *argv[] )
     {
         try
         {
-            LogicalStatementParser left_value = LogicalStatementParser( "a & b" );
-            LogicalStatementParser right_values[] = {
-                LogicalStatementParser(),
-                LogicalStatementParser( "c & d" ),
-                LogicalStatementParser( "a & b" ),
-                LogicalStatementParser( "a | a & b | a & c" )
+            LogicalMatrix left_value = LogicalMatrix( "a & b" );
+            LogicalMatrix right_values[] = {
+                LogicalMatrix(),
+                LogicalMatrix( "c & d" ),
+                LogicalMatrix( "a & b" ),
+                LogicalMatrix( "a | a & b | a & c" )
             };
 
             std::string OR_expected[] = { "a & b", "a & b | c & d", "a & b", "a | a & b | a & c" };
@@ -153,23 +153,23 @@ int main( int argc, char const *argv[] )
 
             if( true )
             {
-                result &= test( LogicalStatementParser( "!a & b & c" ) | LogicalStatementParser( "d & !e & f" ) | LogicalStatementParser( "g & h & !i" ),
+                result &= test( LogicalMatrix( "!a & b & c" ) | LogicalMatrix( "d & !e & f" ) | LogicalMatrix( "g & h & !i" ),
                     "!a & b & c | d & !e & f | g & h & !i" );
 
-                result &= test( LogicalStatementParser( "!a | b | c" ) & LogicalStatementParser( "d | !e | f" ) & LogicalStatementParser( "g | h | !i" ),
+                result &= test( LogicalMatrix( "!a | b | c" ) & LogicalMatrix( "d | !e | f" ) & LogicalMatrix( "g | h | !i" ),
                     "!a & d & g | !a & d & h | !a & d & !i | !a & !e & g | !a & !e & h | !a & !e & !i | !a & f & g | !a & f & h | !a & f & !i | b & d & g | b & d & h | b & d & !i | b & !e & g | b & !e & h | b & !e & !i | b & f & g | b & f & h | b & f & !i | c & d & g | c & d & h | c & d & !i | c & !e & g | c & !e & h | c & !e & !i | c & f & g | c & f & h | c & f & !i" );
             }
 
             if( true )
             {
-                result &= test( !LogicalStatementParser( "a & b" ), "!a | !b");
-                result &= test( !LogicalStatementParser( "!a | !b" ), "a & b");
-                result &= test( !LogicalStatementParser( "a & !b | c & d" ), "!a & !c | !a & !d | b & !c | b & !d" );
-                result &= test( !LogicalStatementParser( "!a & b & c | d & !e & f | g & h & !i" ),
+                result &= test( !LogicalMatrix( "a & b" ), "!a | !b");
+                result &= test( !LogicalMatrix( "!a | !b" ), "a & b");
+                result &= test( !LogicalMatrix( "a & !b | c & d" ), "!a & !c | !a & !d | b & !c | b & !d" );
+                result &= test( !LogicalMatrix( "!a & b & c | d & !e & f | g & h & !i" ),
                     "a & !d & !g | a & !d & !h | a & !d & i | a & e & !g | a & e & !h | a & e & i | a & !f & !g | a & !f & !h | a & !f & i | !b & !d & !g | !b & !d & !h | !b & !d & i | !b & e & !g | !b & e & !h | !b & e & i | !b & !f & !g | !b & !f & !h | !b & !f & i | !c & !d & !g | !c & !d & !h | !c & !d & i | !c & e & !g | !c & e & !h | !c & e & i | !c & !f & !g | !c & !f & !h | !c & !f & i" );
             }
         }
-        catch( LogicalStatementParser::Logicalstatementexception &e )
+        catch( LogicalMatrix::Logicalstatementexception &e )
         {
             std::cout << "Error caught: \"" << e.what() << "\"" << std::endl << "Tests FAILED in parsing" << std::endl << std::endl;
         }

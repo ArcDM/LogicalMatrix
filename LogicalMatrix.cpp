@@ -1,6 +1,6 @@
-// LogicalStatementParser.cpp
+// LogicalMatrix.cpp
 
-/** Implementation file for the LogicalStatementParser class.
+/** Implementation file for the LogicalMatrix class.
  *
  *  This implementation does not handle collapsing of statements such as
  *      A & B | A = A
@@ -8,7 +8,7 @@
  *      A & !A = FALSE
  */
 
- #include "LogicalStatementParser.h"
+ #include "LogicalMatrix.h"
  #include <algorithm>
  #include <sstream>
 
@@ -20,18 +20,18 @@
  */
 
 
-LogicalStatementParser::Operator::Operator( const std::string input_string, const bool input_negation )
+LogicalMatrix::Operator::Operator( const std::string input_string, const bool input_negation )
 {
     label = input_string;
     negation = input_negation;
 }
 
-bool LogicalStatementParser::Operator::operator ==( const Operator &other ) const
+bool LogicalMatrix::Operator::operator ==( const Operator &other ) const
 {
     return ( negation == other.negation ) && ( label.compare( other.label ) == 0 );
 }
 
-bool LogicalStatementParser::Operator::operator <( const Operator &other ) const
+bool LogicalMatrix::Operator::operator <( const Operator &other ) const
 {
     if( label.compare( other.label ) == 0 )
     {
@@ -43,19 +43,19 @@ bool LogicalStatementParser::Operator::operator <( const Operator &other ) const
     }
 }
 
-LogicalStatementParser::Operator LogicalStatementParser::Operator::operator !() const
+LogicalMatrix::Operator LogicalMatrix::Operator::operator !() const
 {
     Operator result( *this );
     result.negation = !negation;
     return result;
 }
 
-bool LogicalStatementParser::empty() const
+bool LogicalMatrix::empty() const
 {
     return operators.empty();
 }
 
-void LogicalStatementParser::clear()
+void LogicalMatrix::clear()
 {
     operators.clear();
     unique_identifiers.clear();
@@ -88,10 +88,10 @@ static inline bool trim(std::string &s) {
 // Construct from parsing a string
 // This is where the class parses the string
 // Recursion is possible depending on the input_string
-LogicalStatementParser::LogicalStatementParser( const std::string &input_string )
+LogicalMatrix::LogicalMatrix( const std::string &input_string )
 {
     size_t index, depth, last = 0, length = input_string.size();
-    LogicalStatementParser temp_parser, cumulative_AND;
+    LogicalMatrix temp_parser, cumulative_AND;
     bool negated = false, recursive_LSP = false, not_empty = false;
 
     auto PAREN_identifier = [&]()
@@ -102,7 +102,7 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
 
             if( trim( piece ) )
             {
-                temp_parser = LogicalStatementParser( piece );
+                temp_parser = LogicalMatrix( piece );
 
                 if( negated )
                 {
@@ -239,14 +239,14 @@ LogicalStatementParser::LogicalStatementParser( const std::string &input_string 
     OR_identifier();
 }
 
-std::set< std::string > LogicalStatementParser::get_unique_identifiers() const
+std::set< std::string > LogicalMatrix::get_unique_identifiers() const
 {
     std::set< std::string > result = unique_identifiers;
     return result;
 }
 
 // A helper function to combine (AND) operator sets
-LogicalStatementParser::statement_collection LogicalStatementParser::weave_operators( const statement_collection &other_operators ) const
+LogicalMatrix::statement_collection LogicalMatrix::weave_operators( const statement_collection &other_operators ) const
 {
     statement_collection result_operators;
     operator_collection temp_statement;
@@ -267,9 +267,9 @@ LogicalStatementParser::statement_collection LogicalStatementParser::weave_opera
 
 // Negation
 // !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = !a & !c | !a & !d | b & !c | b & !d
-LogicalStatementParser LogicalStatementParser::operator !() const
+LogicalMatrix LogicalMatrix::operator !() const
 {
-    auto extract_operators = []( const LogicalStatementParser::operator_collection &input_set )
+    auto extract_operators = []( const LogicalMatrix::operator_collection &input_set )
     {
         statement_collection result_operators;
         operator_collection temp_statement;
@@ -284,9 +284,9 @@ LogicalStatementParser LogicalStatementParser::operator !() const
         return result_operators;
     };
 
-    LogicalStatementParser new_parser;
+    LogicalMatrix new_parser;
     statement_collection temp_ops;
-    LogicalStatementParser::statement_collection::iterator iter = operators.begin(), end = operators.end();
+    LogicalMatrix::statement_collection::iterator iter = operators.begin(), end = operators.end();
 
     new_parser.operators = extract_operators( *iter );
 
@@ -303,9 +303,9 @@ LogicalStatementParser LogicalStatementParser::operator !() const
 }
 
 // AND yealding a new object
-LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatementParser &other ) const
+LogicalMatrix LogicalMatrix::operator &( const LogicalMatrix &other ) const
 {
-    LogicalStatementParser new_parser;
+    LogicalMatrix new_parser;
 
     if( !other.empty() )
     {
@@ -336,7 +336,7 @@ LogicalStatementParser LogicalStatementParser::operator &( const LogicalStatemen
 
 // AND assignment
 // ((a & b) | (c & d)) & ((e & f) | (g & h)) = a & b & e & f | a & b & g & h | c & d & e & f | c & d & g & h
-LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStatementParser &other )
+LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
 {
     if( !other.empty() )
     {
@@ -359,15 +359,15 @@ LogicalStatementParser LogicalStatementParser::operator &=( const LogicalStateme
 }
 
 // OR yealding a new object
-LogicalStatementParser LogicalStatementParser::operator |( const LogicalStatementParser &other ) const
+LogicalMatrix LogicalMatrix::operator |( const LogicalMatrix &other ) const
 {
-    LogicalStatementParser new_parser( *this );
+    LogicalMatrix new_parser( *this );
     new_parser |= other;
     return new_parser;
 }
 
 // OR assignment
-LogicalStatementParser LogicalStatementParser::operator |=( const LogicalStatementParser &other )
+LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
 {
     if( &other == this )
     {
@@ -389,24 +389,24 @@ LogicalStatementParser LogicalStatementParser::operator |=( const LogicalStateme
     return *this;
 }
 
-bool LogicalStatementParser::operator ==( const LogicalStatementParser &other ) const
+bool LogicalMatrix::operator ==( const LogicalMatrix &other ) const
 {
     return operators == other.operators;
 }
 
-bool LogicalStatementParser::operator <( const LogicalStatementParser &other ) const
+bool LogicalMatrix::operator <( const LogicalMatrix &other ) const
 {
     return operators < other.operators;
 }
 
-std::string LogicalStatementParser::to_string() const
+std::string LogicalMatrix::to_string() const
 {
     std::ostringstream stringstream;
     stringstream << *this;
     return stringstream.str();
 }
 
-std::ostream &operator<<( std::ostream &output, const LogicalStatementParser &object_arg )
+std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg )
 {
     bool first = true;
 

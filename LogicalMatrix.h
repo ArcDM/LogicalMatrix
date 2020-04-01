@@ -1,10 +1,10 @@
-// LogicalStatementParser.h
+// LogicalMatrix.h
 
-/** Header file for the LogicalStatementParser class.
+/** Header file for the LogicalMatrix class.
  */
 
-#ifndef __LogicalStatementParser_h_included__
-#define __LogicalStatementParser_h_included__
+#ifndef __LogicalMatrix_h_included__
+#define __LogicalMatrix_h_included__
 
 #include <exception>
 #include <iostream>
@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-class LogicalStatementParser
+class LogicalMatrix
 {
     private:
         class Operator
@@ -45,18 +45,18 @@ class LogicalStatementParser
                 }
         };
 
-        LogicalStatementParser() {}
-        LogicalStatementParser( const std::string &input_string );
+        LogicalMatrix() {}
+        LogicalMatrix( const std::string &input_string );
         std::set< std::string > get_unique_identifiers() const;
         std::string to_string() const;
-        friend std::ostream &operator<<( std::ostream &output, const LogicalStatementParser &object_arg );
-        LogicalStatementParser operator !() const;
-        LogicalStatementParser operator &( const LogicalStatementParser &other ) const;
-        LogicalStatementParser operator &=( const LogicalStatementParser &other );
-        LogicalStatementParser operator |( const LogicalStatementParser &other ) const;
-        LogicalStatementParser operator |=( const LogicalStatementParser &other );
-        bool operator ==( const LogicalStatementParser &other ) const;
-        bool operator <( const LogicalStatementParser &other ) const;
+        friend std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg );
+        LogicalMatrix operator !() const;
+        LogicalMatrix operator &( const LogicalMatrix &other ) const;
+        LogicalMatrix operator &=( const LogicalMatrix &other );
+        LogicalMatrix operator |( const LogicalMatrix &other ) const;
+        LogicalMatrix operator |=( const LogicalMatrix &other );
+        bool operator ==( const LogicalMatrix &other ) const;
+        bool operator <( const LogicalMatrix &other ) const;
         bool empty() const;
         void clear();
 };
