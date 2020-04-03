@@ -20,45 +20,62 @@
  */
 
 
-LogicalMatrix::Operator::Operator( const std::string input_string, const bool input_negation )
+LogicalMatrix::Operator::Operator( const size_t depth )
 {
-    label = input_string;
-    negation = input_negation;
+    True = std::vector< bool >( depth, false );
+    False = std::vector< bool >( depth, false );
+}
+
+LogicalMatrix::Operator::Operator( const size_t depth, const bool condition )
+{
+    True = std::vector< bool >( depth, false );
+    False = std::vector< bool >( depth, false );
+
+    if( condition )
+    {
+        True[ depth - 1 ] = true;
+    }
+    else
+    {
+        False[ depth - 1 ] = true;
+    }
 }
 
 bool LogicalMatrix::Operator::operator ==( const Operator &other ) const
 {
-    return ( negation == other.negation ) && ( label.compare( other.label ) == 0 );
+    return ( True == other.True ) && ( False == other.False );
 }
 
 bool LogicalMatrix::Operator::operator <( const Operator &other ) const
 {
-    if( label.compare( other.label ) == 0 )
+    if( True == other.True )
     {
-        return ( other.negation )? false : negation;
+        return False < other.False;
     }
     else
     {
-        return label < other.label;
+        return True < other.True;
     }
 }
 
+// not used
 LogicalMatrix::Operator LogicalMatrix::Operator::operator !() const
 {
     Operator result( *this );
-    result.negation = !negation;
+    result.True = False;
+    result.False = True;
     return result;
 }
 
 bool LogicalMatrix::empty() const
 {
-    return operators.empty();
+    return AND_matrix.empty();
 }
 
 void LogicalMatrix::clear()
 {
-    operators.clear();
-    unique_identifiers.clear();
+    AND_matrix.clear();
+    OR_matrix.clear();
 }
 
 // credit to https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
@@ -91,7 +108,7 @@ static inline bool trim(std::string &s) {
 LogicalMatrix::LogicalMatrix( const std::string &input_string )
 {
     size_t index, depth, last = 0, length = input_string.size();
-    LogicalMatrix temp_parser, cumulative_AND;
+    LogicalMatrix temp_matrix, cumulative_AND;
     bool negated = false, recursive_LSP = false, not_empty = false;
 
     auto PAREN_identifier = [&]()
@@ -102,11 +119,11 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
 
             if( trim( piece ) )
             {
-                temp_parser = LogicalMatrix( piece );
+                temp_matrix = LogicalMatrix( piece );
 
                 if( negated )
                 {
-                    temp_parser = !temp_parser;
+                    temp_matrix = !temp_matrix;
                     negated = false;
                 }
 
@@ -128,17 +145,17 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
 
             if( not_empty )
             {
-                temp_parser.operators.insert( { Operator( piece, negated ) } );
+                temp_matrix.AND_matrix[ piece ] = Operator( 1, !negated );
+                temp_matrix.OR_matrix = {{ true }};
                 negated = false;
-                unique_identifiers.insert( piece );
             }
         }
 
         if( not_empty ^ recursive_LSP )
         {
             recursive_LSP = not_empty = false;
-            cumulative_AND &= temp_parser;
-            temp_parser.clear();
+            cumulative_AND &= temp_matrix;
+            temp_matrix.clear();
             return;
         }
 
@@ -157,6 +174,9 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
     {
         switch( input_string[ index ] )
         {
+            case ',':
+                // work in progress
+                break;
             case '(':
                 depth = 1;
                 last = ++index;
@@ -241,119 +261,201 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
 
 std::set< std::string > LogicalMatrix::get_unique_identifiers() const
 {
-    std::set< std::string > result = unique_identifiers;
-    return result;
-}
+    std::set< std::string > result;
 
-// A helper function to combine (AND) operator sets
-LogicalMatrix::statement_collection LogicalMatrix::weave_operators( const statement_collection &other_operators ) const
-{
-    statement_collection result_operators;
-    operator_collection temp_statement;
-
-    for( auto &leftoperator : operators )
+    for( auto const& [ key, data ] : AND_matrix )
     {
-        for( auto &rightoperator : other_operators )
-        {
-            temp_statement.insert( leftoperator.begin(), leftoperator.end() );
-            temp_statement.insert( rightoperator.begin(), rightoperator.end() );
-            result_operators.insert( temp_statement );
-            temp_statement.clear();
-        }
+        result.insert( key );
     }
 
-    return result_operators;
+    return result;
 }
 
 // Negation
 // !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = !a & !c | !a & !d | b & !c | b & !d
 LogicalMatrix LogicalMatrix::operator !() const
 {
-    auto extract_operators = []( const LogicalMatrix::operator_collection &input_set )
+    size_t old_size = OR_matrix[ 0 ].size();
+    size_t index, depths[ old_size ] = { 0 };
+    LogicalMatrix new_matrix[ old_size ];
+    std::vector< bool > temp_vector;
+
+    auto extend_vector = [&]( std::vector< bool > &input_vector, const std::vector< bool > &additional_vector, const size_t depth )
     {
-        statement_collection result_operators;
-        operator_collection temp_statement;
+        input_vector.reserve( depth );
 
-        for( auto &element : input_set )
-        {
-            temp_statement.insert( !element );
-            result_operators.insert( temp_statement );
-            temp_statement.clear();
-        }
-
-        return result_operators;
+        std::copy( additional_vector.begin() + input_vector.size(), additional_vector.end(), std::back_inserter( input_vector ) );
     };
 
-    LogicalMatrix new_parser;
-    statement_collection temp_ops;
-    LogicalMatrix::statement_collection::iterator iter = operators.begin(), end = operators.end();
-
-    new_parser.operators = extract_operators( *iter );
-
-    for( ++iter; iter != end; ++iter )
+    for( auto const& [ key, data ] : AND_matrix )
     {
-        temp_ops = extract_operators( *iter );
-        new_parser.operators = new_parser.weave_operators( temp_ops );
-        temp_ops.clear();
+        for( index = 0; index < old_size; ++index )
+        {
+            if( data.True[ index ] )
+            {
+                depths[ index ] += 1;
+                new_matrix[ index ].AND_matrix[ key ] = Operator( depths[ index ], false );
+            }
+
+            if( data.False[ index ] )
+            {
+                depths[ index ] += 1;
+                new_matrix[ index ].AND_matrix[ key ] = Operator( depths[ index ], true );
+            }
+        }
     }
 
-    new_parser.unique_identifiers = unique_identifiers;
+    new_matrix[ 0 ].OR_matrix.push_back( std::vector< bool >( depths[ 0 ], true ) );
+    temp_vector = std::vector< bool >( depths[ 0 ], false );
 
-    return new_parser;
+    for( auto& [ key, data ] : new_matrix[ 0 ].AND_matrix )
+    {
+        extend_vector( data.True, temp_vector, depths[ 0 ] );
+        extend_vector( data.False, temp_vector, depths[ 0 ] );
+    }
+
+    for( index = 1; index < old_size; ++index )
+    {
+        new_matrix[ index ].OR_matrix.push_back( std::vector< bool >( depths[ index ], true ) );
+        temp_vector = std::vector< bool >( depths[ index ], false );
+
+        for( auto& [ key, data ] : new_matrix[ index ].AND_matrix )
+        {
+            extend_vector( data.True, temp_vector, depths[ index ] );
+            extend_vector( data.False, temp_vector, depths[ index ] );
+        }
+
+        new_matrix[ 0 ] &= new_matrix[ index ];
+        new_matrix[ index ].clear();
+    }
+
+    return new_matrix[ 0 ];
 }
 
 // AND yealding a new object
 LogicalMatrix LogicalMatrix::operator &( const LogicalMatrix &other ) const
 {
-    LogicalMatrix new_parser;
-
-    if( !other.empty() )
+    if( other.empty() )
     {
-        if( !empty() )
+        return *this;
+    }
+
+    if( empty() )
+    {
+        return other;
+    }
+
+    LogicalMatrix new_matrix( other );
+
+    size_t old_size = OR_matrix[ 0 ].size(),
+        other_size = other.OR_matrix[ 0 ].size();
+    size_t newsize = old_size * other_size,
+        index, other_index, count;
+
+    auto multiply_vector = [&]( std::vector< bool > &input_vector )
+    {
+        std::vector< bool > vector_copy( input_vector );
+        input_vector.reserve( newsize );
+
+        for( size_t count_ = 1; count_ < old_size; ++count_ )
         {
-            new_parser.operators = weave_operators( other.operators );
+            std::copy( vector_copy.begin(), vector_copy.end(), std::back_inserter( input_vector ) );
         }
-        else
+    };
+
+    for( auto& [ key, data ] : new_matrix.AND_matrix )
+    {
+        multiply_vector( data.True );
+        multiply_vector( data.False );
+    }
+
+    for( auto const& [ key, data ] : AND_matrix )
+    {
+        if( new_matrix.AND_matrix.count( key ) == 0 )
         {
-            new_parser.operators = other.operators;
+            new_matrix.AND_matrix[ key ] = Operator( newsize );
+        }
+
+        index = 0;
+
+        for( other_index = 0; other_index < old_size ; ++other_index )
+        {
+            for( count = 0; count < other_size; ++count )
+            {
+                new_matrix.AND_matrix[ key ].True[ index ] = new_matrix.AND_matrix[ key ].True[ index ] | data.True[ other_index ];
+                new_matrix.AND_matrix[ key ].False[ index ] = new_matrix.AND_matrix[ key ].False[ index ] | data.False[ other_index ];
+                ++index;
+            }
         }
     }
-    else
-    {
-        new_parser.operators = operators;
-    }
 
+    multiply_vector( new_matrix.OR_matrix[ 0 ] );
 
-    new_parser.unique_identifiers = unique_identifiers;
-
-    for( auto &identifier : other.unique_identifiers )
-    {
-        new_parser.unique_identifiers.insert( identifier );
-    }
-
-    return new_parser;
+    return new_matrix;
 }
 
 // AND assignment
 // ((a & b) | (c & d)) & ((e & f) | (g & h)) = a & b & e & f | a & b & g & h | c & d & e & f | c & d & g & h
 LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
 {
-    if( !other.empty() )
+    if( other.empty() )
     {
-        if( !empty() )
+        return *this;
+    }
+
+    if( empty() )
+    {
+        *this = other;
+        return *this;
+    }
+
+    size_t old_size = OR_matrix[ 0 ].size(),
+        other_size = other.OR_matrix[ 0 ].size();
+    size_t newsize = old_size * other_size,
+        index, other_index, count;
+
+    auto stretch_vector = [&]( std::vector< bool > &input_vector )
+    {
+        std::vector< bool > vector_copy( input_vector );
+        input_vector = std::vector< bool >( newsize );
+        index = 0;
+
+        for( bool value : vector_copy )
         {
-            operators = weave_operators( other.operators );
+            for( size_t count_ = 0; count_ < other_size; ++count_ )
+            {
+                input_vector[ index++ ] = value;
+            }
         }
-        else
+    };
+
+    for( auto& [ key, data ] : AND_matrix )
+    {
+        stretch_vector( data.True );
+        stretch_vector( data.False );
+    }
+
+    for( auto const& [ key, data ] : other.AND_matrix )
+    {
+        if( AND_matrix.count( key ) == 0 )
         {
-            operators = other.operators;
+            AND_matrix[ key ] = Operator( newsize );
+        }
+
+        index = 0;
+
+        for( count = 0; count < old_size; ++count )
+        {
+            for( other_index = 0; other_index < other_size ; ++other_index )
+            {
+                AND_matrix[ key ].True[ index ] = AND_matrix[ key ].True[ index ] | data.True[ other_index ];
+                AND_matrix[ key ].False[ index ] = AND_matrix[ key ].False[ index ] | data.False[ other_index ];
+                ++index;
+            }
         }
     }
 
-    for( auto &identifier : other.unique_identifiers )
-    {
-        unique_identifiers.insert( identifier );
-    }
+    stretch_vector( OR_matrix[ 0 ] );
 
     return *this;
 }
@@ -361,42 +463,97 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
 // OR yealding a new object
 LogicalMatrix LogicalMatrix::operator |( const LogicalMatrix &other ) const
 {
-    LogicalMatrix new_parser( *this );
-    new_parser |= other;
-    return new_parser;
+    LogicalMatrix new_matrix( *this );
+    new_matrix |= other;
+    return new_matrix;
 }
 
 // OR assignment
+/*  (A) | (C, D) = A | C, A | D
+    [1]   [1, 0]   [1, 1, 0]
+          [0, 1]   [1, 0, 1]
+    (A, B) | (C) = A | C, B | C
+    [1, 0]   [1]   [1, 0, 1]
+    [0, 1]         [0, 1, 1]
+    (A, B) | (C, D) = A | C, B | C, A | D, B | D
+    [1, 0]   [1, 0]   [1, 0, 1, 0]
+    [0, 1]   [0, 1]   [0, 1, 1, 0]
+                      [1, 0, 0, 1]
+                      [0, 1, 0, 1]
+    (A, B) | (A, B) = A, B, A | B
+    [1, 0]   [1, 0]   [1, 0]
+    [0, 1]   [0, 1]   [0, 1]
+                      [1, 1]
+*/
 LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
 {
-    if( &other == this )
+    if( other.empty() )
     {
         return *this;
     }
 
-    // add other.operators to operators
-    for( auto &op : other.operators )
+    if( empty() )
     {
-        operators.insert( op );
+        *this = other;
+        return *this;
     }
 
-    // add other.unique_identifiers to unique_identifiers
-    for( auto &identifier : other.unique_identifiers )
+    size_t old_size = OR_matrix[ 0 ].size(),
+        other_size = other.OR_matrix[ 0 ].size();
+    size_t newsize = old_size + other_size;
+
+    std::vector< bool > extended_vector( other_size, false );
+
+    auto extend_vector = [&]( std::vector< bool > &input_vector, const std::vector< bool > &additional_vector )
     {
-        unique_identifiers.insert( identifier );
+        input_vector.reserve( newsize );
+
+        std::copy( additional_vector.begin(), additional_vector.end(), std::back_inserter( input_vector ) );
+    };
+
+    // extend keys found in this and not other with FALSE
+    for( auto& [ key, data ] : AND_matrix )
+    {
+        if( other.AND_matrix.count( key ) == 0 )
+        {
+            extend_vector( data.True, extended_vector );
+            extend_vector( data.False, extended_vector );
+        }
     }
+
+    for( auto const& [ key, data ] : other.AND_matrix )
+    {
+        if( AND_matrix.count( key ) == 0 )
+        {
+            AND_matrix[ key ] = Operator( old_size );
+        }
+
+        extend_vector( AND_matrix[ key ].True, data.True );
+        extend_vector( AND_matrix[ key ].False, data.False );
+    }
+
+    extend_vector( OR_matrix[ 0 ], other.OR_matrix[ 0 ] );
+
+    // needs to handle duplicate AND sets
 
     return *this;
 }
 
 bool LogicalMatrix::operator ==( const LogicalMatrix &other ) const
 {
-    return operators == other.operators;
+    return ( AND_matrix == other.AND_matrix ) && ( OR_matrix == other.OR_matrix );
 }
 
 bool LogicalMatrix::operator <( const LogicalMatrix &other ) const
 {
-    return operators < other.operators;
+    if( AND_matrix == other.AND_matrix )
+    {
+        return OR_matrix < other.OR_matrix;
+    }
+    else
+    {
+        return AND_matrix < other.AND_matrix;
+    }
 }
 
 std::string LogicalMatrix::to_string() const
@@ -408,36 +565,105 @@ std::string LogicalMatrix::to_string() const
 
 std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg )
 {
-    bool first = true;
+    size_t size = object_arg.OR_matrix[0].size();
+    std::ostringstream AND_streams[ size ];
+    std::vector< bool > AND_empty( size, true );
+    bool OR_empty, output_empty = true;
 
-    for( auto OR_separated : object_arg.operators )
+    for( auto const& [ key, data ] : object_arg.AND_matrix )
     {
-        if( !first )
+        for( size_t index = 0; index < size; ++index )
         {
-            output << " | ";
+            if( data.True[ index ] ^ data.False[ index ] )
+            {
+                if( AND_empty[ index ] )
+                {
+                    AND_empty[ index ] = false;
+                }
+                else
+                {
+                    AND_streams[ index ] << " & ";
+                }
+
+                if( data.False[ index ] )
+                {
+                    AND_streams[ index ] << "!";
+                }
+
+                AND_streams[ index ] << key;
+            }
+        }
+    }
+
+    for( auto statement : object_arg.OR_matrix )
+    {
+        OR_empty = true;
+
+        if( output_empty )
+        {
+            output_empty = false;
+        }
+        else
+        {
+            output << ", ";
         }
 
-        first = true;
-
-        for( auto AND_separated : OR_separated )
+        for( size_t index = 0; index < size; ++index )
         {
-            if( first )
+            if( statement[ index ] && !AND_empty[ index ] )
             {
-                first = false;
-            }
-            else
-            {
-                output << " & ";
-            }
+                if( OR_empty )
+                {
+                    OR_empty = false;
+                }
+                else
+                {
+                    output << " | ";
+                }
 
-            if( AND_separated.negation )
-            {
-                output << "!";
+                //output << AND_streams[ index ].rdbuf();
+                output << AND_streams[ index ].str();
             }
-
-            output << AND_separated.label;
         }
     }
 
     return output;
+}
+
+void LogicalMatrix::debug() const
+{
+    std::cout << "AND_matrix" << std::endl;
+
+    for( auto const& [ key, data ] : AND_matrix )
+    {
+        std::cout << "Value: " << key << std::endl << "T: ";
+
+        for( auto const& value : data.True )
+        {
+            std::cout << value;
+        }
+
+        std::cout << std::endl << "F: ";
+
+        for( auto const& value : data.False )
+        {
+            std::cout << value;
+        }
+
+        std::cout << std::endl;
+    }
+
+    std::cout << "OR_matrix" << std::endl;
+
+    for( auto index = 0; index < OR_matrix.size(); ++index )
+    {
+        std::cout << index + 1 << ": ";
+
+        for( auto const& value : OR_matrix[ index ] )
+        {
+            std::cout << value;
+        }
+
+        std::cout << std::endl;
+    }
 }

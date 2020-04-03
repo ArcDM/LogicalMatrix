@@ -52,6 +52,7 @@ bool test( const LogicalMatrix &test_parser, const std::string &expected, const 
         if( !result )
         {
             std::cout << "Expected: \"" << expected << "\"" << std::endl;
+            test_parser.debug();
         }
 
         std::cout << std::endl;
@@ -139,7 +140,7 @@ int main( int argc, char const *argv[] )
                 LogicalMatrix( "a | a & b | a & c" )
             };
 
-            std::string OR_expected[] = { "a & b", "a & b | c & d", "a & b", "a | a & b | a & c" };
+            std::string OR_expected[] = { "a & b", "a & b | c & d", "a & b", "a & b | a | a & c" };
             std::string AND_expected[] = { "a & b", "a & b & c & d", "a & b", "a & b | a & b & c" };
 
             if( true )
@@ -183,7 +184,7 @@ int main( int argc, char const *argv[] )
         result &= test( "a | (c & b) | d", "a | b & c | d" );
         result &= test( "(a | c) AND (b | d)", "a & b | a & d | b & c | c & d" );
         result &= test( "(a & c) OR (b & d)", "a & c | b & d" );
-        result &= test( "!(a | b) | !( c & d ) | !(!a) | !!a", "!a & !b | a | !c | !d" );
+        result &= test( "!(a | b) | !( c & d ) | !(!a) | !!a", "!a & !b | !c | !d | a" );
         result &= test( "a & ( b | ( c & d ) )", "a & b | a & c & d" );
         result &= test( " a & ( b & ( c | d ) ) ", "a & b & c | a & b & d" );
         result &= test( "((a & b))", "a & b" );
