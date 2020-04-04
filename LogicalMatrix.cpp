@@ -80,7 +80,7 @@ void LogicalMatrix::clear()
 
 // credit to https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 // trim from start (in place)
-static inline void ltrim(std::string &s) {
+static inline void ltrim_string(std::string &s) {
     s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int ch) {
         return !std::isspace(ch);
     }));
@@ -88,7 +88,7 @@ static inline void ltrim(std::string &s) {
 
 // credit to https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 // trim from end (in place)
-static inline void rtrim(std::string &s) {
+static inline void rtrim_string(std::string &s) {
     s.erase(std::find_if(s.rbegin(), s.rend(), [](int ch) {
         return !std::isspace(ch);
     }).base(), s.end());
@@ -96,9 +96,9 @@ static inline void rtrim(std::string &s) {
 
 // credit to https://stackoverflow.com/questions/216823/whats-the-best-way-to-trim-stdstring
 // trim from both ends (in place) and returns if the string is still not empty
-static inline bool trim(std::string &s) {
-    ltrim(s);
-    rtrim(s);
+static inline bool trim_string(std::string &s) {
+    ltrim_string(s);
+    rtrim_string(s);
     return !s.empty();
 }
 
@@ -117,7 +117,7 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
         {
             std::string piece = input_string.substr( last, index - last );
 
-            if( trim( piece ) )
+            if( trim_string( piece ) )
             {
                 temp_matrix = LogicalMatrix( piece );
 
@@ -141,7 +141,7 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
         {
             std::string piece = input_string.substr( last, index - last );
 
-            not_empty = trim( piece );
+            not_empty = trim_string( piece );
 
             if( not_empty )
             {
@@ -345,52 +345,8 @@ LogicalMatrix LogicalMatrix::operator &( const LogicalMatrix &other ) const
         return other;
     }
 
-    LogicalMatrix new_matrix( other );
-
-    size_t old_size = OR_matrix[ 0 ].size(),
-        other_size = other.OR_matrix[ 0 ].size();
-    size_t newsize = old_size * other_size,
-        index, other_index, count;
-
-    auto multiply_vector = [&]( std::vector< bool > &input_vector )
-    {
-        std::vector< bool > vector_copy( input_vector );
-        input_vector.reserve( newsize );
-
-        for( size_t count_ = 1; count_ < old_size; ++count_ )
-        {
-            std::copy( vector_copy.begin(), vector_copy.end(), std::back_inserter( input_vector ) );
-        }
-    };
-
-    for( auto& [ key, data ] : new_matrix.AND_matrix )
-    {
-        multiply_vector( data.True );
-        multiply_vector( data.False );
-    }
-
-    for( auto const& [ key, data ] : AND_matrix )
-    {
-        if( new_matrix.AND_matrix.count( key ) == 0 )
-        {
-            new_matrix.AND_matrix[ key ] = Operator( newsize );
-        }
-
-        index = 0;
-
-        for( other_index = 0; other_index < old_size ; ++other_index )
-        {
-            for( count = 0; count < other_size; ++count )
-            {
-                new_matrix.AND_matrix[ key ].True[ index ] = new_matrix.AND_matrix[ key ].True[ index ] | data.True[ other_index ];
-                new_matrix.AND_matrix[ key ].False[ index ] = new_matrix.AND_matrix[ key ].False[ index ] | data.False[ other_index ];
-                ++index;
-            }
-        }
-    }
-
-    multiply_vector( new_matrix.OR_matrix[ 0 ] );
-
+    LogicalMatrix new_matrix( *this );
+    new_matrix &= other;
     return new_matrix;
 }
 
@@ -469,22 +425,6 @@ LogicalMatrix LogicalMatrix::operator |( const LogicalMatrix &other ) const
 }
 
 // OR assignment
-/*  (A) | (C, D) = A | C, A | D
-    [1]   [1, 0]   [1, 1, 0]
-          [0, 1]   [1, 0, 1]
-    (A, B) | (C) = A | C, B | C
-    [1, 0]   [1]   [1, 0, 1]
-    [0, 1]         [0, 1, 1]
-    (A, B) | (C, D) = A | C, B | C, A | D, B | D
-    [1, 0]   [1, 0]   [1, 0, 1, 0]
-    [0, 1]   [0, 1]   [0, 1, 1, 0]
-                      [1, 0, 0, 1]
-                      [0, 1, 0, 1]
-    (A, B) | (A, B) = A, B, A | B
-    [1, 0]   [1, 0]   [1, 0]
-    [0, 1]   [0, 1]   [0, 1]
-                      [1, 1]
-*/
 LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
 {
     if( other.empty() )
@@ -501,6 +441,7 @@ LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
     size_t old_size = OR_matrix[ 0 ].size(),
         other_size = other.OR_matrix[ 0 ].size();
     size_t newsize = old_size + other_size;
+    bool temp_bool;
 
     std::vector< bool > extended_vector( other_size, false );
 
@@ -532,11 +473,102 @@ LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
         extend_vector( AND_matrix[ key ].False, data.False );
     }
 
+    // need to account for multiple statements
     extend_vector( OR_matrix[ 0 ], other.OR_matrix[ 0 ] );
 
-    // needs to handle duplicate AND sets
+    trim();
 
     return *this;
+}
+
+// This function consolidates duplicate AND sets
+void LogicalMatrix::trim()
+{
+    size_t index, inner_index, size = OR_matrix[ 0 ].size();
+    bool temp_bool;
+
+    std::vector< std::vector< bool > > has_subset( size, std::vector< bool >( size, true ) );
+
+    auto analyze_subsets = [&]( const std::vector< bool > &input_vector )
+    {
+        if( !input_vector[ index ] )
+        {
+            for( inner_index = 0; inner_index < size; ++inner_index )
+            {
+                has_subset[ inner_index ][ index ] = has_subset[ inner_index ][ index ] & !input_vector[ inner_index ];
+            }
+        }
+    };
+
+    for( auto const& [ key, data ] : AND_matrix )
+    {
+        for( index = 0; index < size; ++index )
+        {
+            analyze_subsets( data.True );
+            analyze_subsets( data.False );
+        }
+    }
+
+    for( index = 0; index < size; ++index )
+    {
+        for( inner_index = 0; inner_index < size; ++inner_index )
+        {
+            if( index != inner_index && has_subset[ index ][ inner_index ] )
+            {
+                temp_bool = true;
+
+                for( auto& statement : OR_matrix )
+                { // check if each statement uses these indexes equivalently
+                    temp_bool &= ( statement[ index ] == statement[ inner_index ] );
+                }
+
+                if( temp_bool )
+                { // remove index from *this and has_subset
+                    for( auto AND_iter = AND_matrix.begin(); AND_iter != AND_matrix.end(); )
+                    {
+                        AND_iter->second.True.erase( AND_iter->second.True.begin() + inner_index );
+                        AND_iter->second.False.erase( AND_iter->second.False.begin() + inner_index );
+
+                        temp_bool = false;
+
+                        for( auto const& value : AND_iter->second.True )
+                        {
+                            temp_bool |= value;
+                        }
+
+                        for( auto const& value : AND_iter->second.False )
+                        {
+                            temp_bool |= value;
+                        }
+
+                        if( temp_bool )
+                        {
+                            ++AND_iter;
+                        }
+                        else
+                        { // has no values
+                            AND_matrix.erase( AND_iter++ );
+                        }
+                    }
+
+                    for( auto& statement : OR_matrix )
+                    {
+                        statement.erase( statement.begin() + inner_index );
+                    }
+
+                    has_subset.erase( has_subset.begin() + inner_index );
+
+                    for( auto& each_set : has_subset )
+                    {
+                        each_set.erase( each_set.begin() + inner_index );
+                    }
+
+                    index -= ( inner_index < index )? 1 : 0;
+                    --size;
+                }
+            }
+        }
+    }
 }
 
 bool LogicalMatrix::operator ==( const LogicalMatrix &other ) const
@@ -630,40 +662,33 @@ std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg 
     return output;
 }
 
-void LogicalMatrix::debug() const
+void LogicalMatrix::debug_print() const
 {
-    std::cout << "AND_matrix" << std::endl;
-
-    for( auto const& [ key, data ] : AND_matrix )
+    auto print_vector = [&]( const std::string &label, const std::vector< bool > &input_vector )
     {
-        std::cout << "Value: " << key << std::endl << "T: ";
+        std::cout << label << ": ";
 
-        for( auto const& value : data.True )
-        {
-            std::cout << value;
-        }
-
-        std::cout << std::endl << "F: ";
-
-        for( auto const& value : data.False )
+        for( auto const& value : input_vector )
         {
             std::cout << value;
         }
 
         std::cout << std::endl;
+    };
+
+    std::cout << "AND_matrix" << std::endl;
+
+    for( auto const& [ key, data ] : AND_matrix )
+    {
+        std::cout << "Value: " << key << std::endl;
+        print_vector( "T", data.True );
+        print_vector( "F", data.False );
     }
 
     std::cout << "OR_matrix" << std::endl;
 
     for( auto index = 0; index < OR_matrix.size(); ++index )
     {
-        std::cout << index + 1 << ": ";
-
-        for( auto const& value : OR_matrix[ index ] )
-        {
-            std::cout << value;
-        }
-
-        std::cout << std::endl;
+        print_vector( std::to_string( index + 1 ), OR_matrix[ index ] );
     }
 }

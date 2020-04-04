@@ -49,11 +49,8 @@ bool test( const LogicalMatrix &test_parser, const std::string &expected, const 
             std::cout << test_parser.get_unique_identifiers() << std::endl;
         }
 
-        if( !result )
-        {
-            std::cout << "Expected: \"" << expected << "\"" << std::endl;
-            test_parser.debug();
-        }
+        std::cout << "Expected: \"" << expected << "\"" << std::endl;
+        test_parser.debug_print();
 
         std::cout << std::endl;
     }
@@ -140,8 +137,8 @@ int main( int argc, char const *argv[] )
                 LogicalMatrix( "a | a & b | a & c" )
             };
 
-            std::string OR_expected[] = { "a & b", "a & b | c & d", "a & b", "a & b | a | a & c" };
-            std::string AND_expected[] = { "a & b", "a & b & c & d", "a & b", "a & b | a & b & c" };
+            std::string OR_expected[] = { "a & b", "a & b | c & d", "a & b", "a" };
+            std::string AND_expected[] = { "a & b", "a & b & c & d", "a & b", "a & b" };
 
             if( true )
             {

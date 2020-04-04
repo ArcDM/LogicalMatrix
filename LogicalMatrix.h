@@ -55,7 +55,8 @@ class LogicalMatrix
         bool operator <( const LogicalMatrix &other ) const;
         bool empty() const;
         void clear();
-        void debug() const;
+        void trim();
+        void debug_print() const;
 };
 
 #endif
