@@ -278,52 +278,49 @@ LogicalMatrix LogicalMatrix::operator !() const
     size_t old_size = OR_matrix[ 0 ].size();
     size_t index, depths[ old_size ] = { 0 };
     LogicalMatrix new_matrix[ old_size ];
-    std::vector< bool > temp_vector;
 
-    auto extend_vector = [&]( std::vector< bool > &input_vector, const std::vector< bool > &additional_vector, const size_t depth )
+    auto build_operator = [&]( const std::vector< bool > &input_vector, const std::string key, const bool conditional )
+    {
+        if( input_vector[ index ] )
+        {
+            depths[ index ] += 1;
+            new_matrix[ index ].AND_matrix[ key ] = Operator( depths[ index ], conditional );
+        }
+    };
+
+    auto extend_vector = []( std::vector< bool > &input_vector, const std::vector< bool > &additional_vector, const size_t depth )
     {
         input_vector.reserve( depth );
 
         std::copy( additional_vector.begin() + input_vector.size(), additional_vector.end(), std::back_inserter( input_vector ) );
     };
 
+    auto finalize_matrix = [&]( const int &inner_index )
+    {
+        std::vector< bool > temp_vector = std::vector< bool >( depths[ inner_index ], false );
+        new_matrix[ inner_index ].OR_matrix.push_back( std::vector< bool >( depths[ inner_index ], true ) );
+
+        for( auto& [ key, data ] : new_matrix[ inner_index ].AND_matrix )
+        {
+            extend_vector( data.True, temp_vector, depths[ inner_index ] );
+            extend_vector( data.False, temp_vector, depths[ inner_index ] );
+        }
+    };
+
     for( auto const& [ key, data ] : AND_matrix )
     {
         for( index = 0; index < old_size; ++index )
         {
-            if( data.True[ index ] )
-            {
-                depths[ index ] += 1;
-                new_matrix[ index ].AND_matrix[ key ] = Operator( depths[ index ], false );
-            }
-
-            if( data.False[ index ] )
-            {
-                depths[ index ] += 1;
-                new_matrix[ index ].AND_matrix[ key ] = Operator( depths[ index ], true );
-            }
+            build_operator( data.True, key, false );
+            build_operator( data.False, key, true );
         }
     }
 
-    new_matrix[ 0 ].OR_matrix.push_back( std::vector< bool >( depths[ 0 ], true ) );
-    temp_vector = std::vector< bool >( depths[ 0 ], false );
-
-    for( auto& [ key, data ] : new_matrix[ 0 ].AND_matrix )
-    {
-        extend_vector( data.True, temp_vector, depths[ 0 ] );
-        extend_vector( data.False, temp_vector, depths[ 0 ] );
-    }
+    finalize_matrix( 0 );
 
     for( index = 1; index < old_size; ++index )
     {
-        new_matrix[ index ].OR_matrix.push_back( std::vector< bool >( depths[ index ], true ) );
-        temp_vector = std::vector< bool >( depths[ index ], false );
-
-        for( auto& [ key, data ] : new_matrix[ index ].AND_matrix )
-        {
-            extend_vector( data.True, temp_vector, depths[ index ] );
-            extend_vector( data.False, temp_vector, depths[ index ] );
-        }
+        finalize_matrix( index );
 
         new_matrix[ 0 ] &= new_matrix[ index ];
         new_matrix[ index ].clear();
@@ -335,16 +332,6 @@ LogicalMatrix LogicalMatrix::operator !() const
 // AND yealding a new object
 LogicalMatrix LogicalMatrix::operator &( const LogicalMatrix &other ) const
 {
-    if( other.empty() )
-    {
-        return *this;
-    }
-
-    if( empty() )
-    {
-        return other;
-    }
-
     LogicalMatrix new_matrix( *this );
     new_matrix &= other;
     return new_matrix;
@@ -378,7 +365,7 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
 
         for( bool value : vector_copy )
         {
-            for( size_t count_ = 0; count_ < other_size; ++count_ )
+            for( count = 0; count < other_size; ++count )
             {
                 input_vector[ index++ ] = value;
             }
@@ -445,7 +432,7 @@ LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
 
     std::vector< bool > extended_vector( other_size, false );
 
-    auto extend_vector = [&]( std::vector< bool > &input_vector, const std::vector< bool > &additional_vector )
+    auto extend_vector = [ &newsize ]( std::vector< bool > &input_vector, const std::vector< bool > &additional_vector )
     {
         input_vector.reserve( newsize );
 
@@ -664,7 +651,7 @@ std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg 
 
 void LogicalMatrix::debug_print() const
 {
-    auto print_vector = [&]( const std::string &label, const std::vector< bool > &input_vector )
+    auto print_vector = []( const std::vector< bool > &input_vector, const std::string &label )
     {
         std::cout << label << ": ";
 
@@ -681,14 +668,14 @@ void LogicalMatrix::debug_print() const
     for( auto const& [ key, data ] : AND_matrix )
     {
         std::cout << "Value: " << key << std::endl;
-        print_vector( "T", data.True );
-        print_vector( "F", data.False );
+        print_vector( data.True, "T" );
+        print_vector( data.False, "F" );
     }
 
     std::cout << "OR_matrix" << std::endl;
 
     for( auto index = 0; index < OR_matrix.size(); ++index )
     {
-        print_vector( std::to_string( index + 1 ), OR_matrix[ index ] );
+        print_vector( OR_matrix[ index ], std::to_string( index + 1 ) );
     }
 }
