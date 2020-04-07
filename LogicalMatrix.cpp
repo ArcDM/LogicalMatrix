@@ -685,6 +685,57 @@ bool LogicalMatrix::operator <( const LogicalMatrix &other ) const
     }
 }
 
+std::vector< bool > LogicalMatrix::evaluate( std::map< std::string, bool > identifiers ) const
+{
+    size_t index, size = OR_matrix[ 0 ].size();
+    std::vector< bool > truth_table( size, true );
+    std::vector< bool > result;
+
+    for( auto const& [ key, data ] : AND_matrix )
+    {
+        if( identifiers.count( key ) == 0 )
+        { // keys found in this and not identifiers with are evaluated as FALSE regardless of data
+            for( index = 0; index < size; ++index )
+            {
+                truth_table[ index ] = truth_table[ index ] & !( data.True[ index ] || data.False[ index ] );
+            }
+        }
+        else
+        { // keys found in both this and identifiers are evaluated based on their value in identifiers
+            if( identifiers[ key ] )
+            {
+                for( index = 0; index < size; ++index )
+                {
+                    truth_table[ index ] = truth_table[ index ] & !data.False[ index ];
+                }
+            }
+            else
+            {
+                for( index = 0; index < size; ++index )
+                {
+                    truth_table[ index ] = truth_table[ index ] & !data.True[ index ];
+                }
+            }
+        }
+    }
+
+    for( std::vector< bool > const& statement : OR_matrix )
+    {
+        result.push_back( false );
+
+        for( index = 0; index < size; ++index )
+        {
+            if( truth_table[ index ] && statement[ index ] )
+            {
+                result.back() = true;
+                break;
+            }
+        }
+    }
+
+    return result;
+}
+
 std::string LogicalMatrix::to_string() const
 {
     std::ostringstream stringstream;

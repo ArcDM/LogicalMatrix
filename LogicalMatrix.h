@@ -47,6 +47,7 @@ class LogicalMatrix
         LogicalMatrix() {}
         LogicalMatrix( const std::string &input_string );
         std::set< std::string > get_unique_identifiers() const;
+        std::vector< bool > evaluate( std::map< std::string, bool > identifiers ) const;
         std::string to_string() const;
         friend std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg );
         LogicalMatrix operator !() const;

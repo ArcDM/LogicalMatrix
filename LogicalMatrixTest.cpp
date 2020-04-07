@@ -12,9 +12,42 @@
 // used to print unique identifiers from LogicalMatrix
 std::ostream &operator<<( std::ostream &output, const std::set< std::string > &object_arg )
 {
-    for( auto &value : object_arg )
+    for( std::string const& value : object_arg )
     {
         output << "\"" << value << "\" ";
+    }
+
+    return output;
+}
+
+// used to print a bool vector
+std::ostream &operator<<( std::ostream &output, const std::vector< bool > &object_arg )
+{
+    for( bool const& value : object_arg )
+    {
+        output << ( value? "T" : "F" );
+    }
+
+    return output;
+}
+
+// used to print a string to bool map
+std::ostream &operator<<( std::ostream &output, const std::map< std::string, bool > &object_arg )
+{
+    bool first = true;
+
+    for( auto const& [ key, value ] : object_arg )
+    {
+        if( first )
+        {
+            first = false;
+        }
+        else
+        {
+            output << ", ";
+        }
+
+        output << key << " = " << ( value? "T" : "F" );
     }
 
     return output;
@@ -75,6 +108,74 @@ bool test( const std::string &tested, const std::string &expected, const bool &d
     }
 
     return false;
+}
+
+bool test_evaluate( const std::string &tested, const std::map< std::string, bool > &test_map, const std::vector< bool > &expected, const bool &display = false )
+{
+    try
+    {
+        std::vector< bool > result_vector = LogicalMatrix( tested ).evaluate( test_map );
+        bool result = ( result_vector == expected );
+
+        if( display || !result )
+        {
+            std::cout << "Testing \"" << tested << "\" with evaluate function\nusing " << test_map << std::endl
+                << result_vector << std::endl << "Test "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
+        }
+
+        return result;
+    }
+    catch( LogicalMatrix::Logicalstatementexception &e )
+    {
+        std::cout << "Testing \"" << tested << "\" with evaluate function" << std::endl
+            << "Error caught for \"" << tested << "\": \"" << e.what() << "\"" << std::endl << "Test FAILED" << std::endl << std::endl;
+    }
+
+    return false;
+}
+
+bool test_evaluate_full( const std::string &tested, const bool &display = false )
+{
+    bool result = true;
+
+    try
+    {
+        LogicalMatrix test_matrix = LogicalMatrix( tested );
+        std::set< std::string > test_values = test_matrix.get_unique_identifiers();
+        size_t counter, isolator, length = 1 << test_values.size();
+        std::map< std::string, bool > test_map;
+        std::vector< bool > result_vector;
+
+        if( display )
+        {
+            std::cout << "Testing \"" << test_matrix << "\" with evaluate function" << std::endl;
+        }
+
+        for( counter = 0; counter < length; ++counter )
+        {
+            isolator = counter;
+
+            for( std::string const& key : test_values )
+            {
+                test_map[ key ] = ( isolator & 1 );
+                isolator >>= 1;
+            }
+
+            result_vector = test_matrix.evaluate( test_map );
+
+            if( display )
+            {
+                std::cout << "Test " << counter << ": " << test_map << std::endl << result_vector << std::endl << std::endl;
+            }
+        }
+    }
+    catch( LogicalMatrix::Logicalstatementexception &e )
+    {
+        result = false;
+        std::cout << "Error caught: \"" << e.what() << "\"" << std::endl << "Tests FAILED in parsing" << std::endl << std::endl;
+    }
+
+    return result;
 }
 
 // Testing function for Logicalstatementexception during parsing
@@ -290,6 +391,7 @@ int main( int argc, char const *argv[] )
         result &= test_error( "( a" );
         result &= test_error( "a )" );
         result &= test_error( "!" );
+        result &= test_error( "! & a" );
         result &= test_error( "()" );
         result &= test_error( "" );
         result &= test_error( "," );
@@ -303,9 +405,23 @@ int main( int argc, char const *argv[] )
         result &= test_error( "!, a" );
     }
 
-    std::chrono::duration< double > time_span = std::chrono::duration_cast< std::chrono::duration< double > >( std::chrono::high_resolution_clock::now() - time_start );
+    if( true )
+    {
+        std::map< std::string, bool > test_map = { { "a", false }, { "b", true }, { "c", true }, { "d", false }, { "e", false } };
 
-    std::cout << std::endl << ( result? "All tests passed" : "Tests FAILED" ) << std::endl
-        << "\tTime elapsed: " << time_span.count() << " seconds" << std::endl << "End testing" << std::endl;
+        result &= test_evaluate( "a & b, c | d", test_map, { 0, 1 } );
+        result &= test_evaluate( "a & b | e & f, c | d | e & f", test_map, { 0, 1 } );
+        result &= test_evaluate( "a & b, a & b | d & e, a & b | c | d, c | d", test_map, { 0, 0, 1, 1 } );
+        result &= test_evaluate( "a | b, a & b | c & d, a & b | e, c | d | a | b, c | d, e | c | d", test_map, { 1, 0, 0, 1, 1, 1 } );
+    }
+
+    if( true )
+    {
+        result &= test_evaluate_full( "( a & b, c | d ) & ( a | b, c & d, e )", true );
+    }
+
+    std::cout << std::endl << ( result? "All tests passed" : "Tests FAILED" ) << std::endl << "\tTime elapsed: " <<
+        std::chrono::duration_cast< std::chrono::duration< double > >( std::chrono::high_resolution_clock::now() - time_start ).count()
+        << " seconds" << std::endl << "End testing" << std::endl;
     return 0;
 }
