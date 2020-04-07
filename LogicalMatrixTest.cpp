@@ -169,6 +169,7 @@ int main( int argc, char const *argv[] )
         }
         catch( LogicalMatrix::Logicalstatementexception &e )
         {
+            result = false;
             std::cout << "Error caught: \"" << e.what() << "\"" << std::endl << "Tests FAILED in parsing" << std::endl << std::endl;
         }
     }
@@ -204,6 +205,45 @@ int main( int argc, char const *argv[] )
         result &= test_error( "!" );
         result &= test_error( "()" );
         result &= test_error( "" );
+    }
+
+    if( true )
+    {
+        try
+        {
+            LogicalMatrix left_value = LogicalMatrix( "a & b" );
+            LogicalMatrix right_values[] = {
+                LogicalMatrix(),
+                LogicalMatrix( "c & d" ),
+                LogicalMatrix( "a & b" ),
+                LogicalMatrix( "a & c" ),
+                LogicalMatrix( "a | a & b | a & c" )
+            };
+
+            std::string ADD_expected[] = { "a & b", "a & b, c & d", "a & b, a & b", "a & b, a & c", "a & b, a" };
+
+            if( true )
+            {
+                for( short index = 0; index < 5; ++index )
+                {
+                    result &= test( left_value + right_values[ index ], ADD_expected[ index ] );
+                }
+            }
+
+            if( true )
+            {
+                result &= test( LogicalMatrix( "!a & b & c" ) + LogicalMatrix( "d & !e & f" ) + LogicalMatrix( "g & h & !i" ),
+                    "!a & b & c, d & !e & f, g & h & !i" );
+
+                result &= test( LogicalMatrix( "!a & b & c" ) + LogicalMatrix( "a & !b & c" ) + LogicalMatrix( "a & b & !c" ),
+                    "!a & b & c, a & !b & c, a & b & !c" );
+            }
+        }
+        catch( LogicalMatrix::Logicalstatementexception &e )
+        {
+            result = false;
+            std::cout << "Error caught: \"" << e.what() << "\"" << std::endl << "Tests FAILED in parsing" << std::endl << std::endl;
+        }
     }
 
     std::cout << std::endl << ( result? "All tests passed" : "Tests FAILED" ) << std::endl << "End testing" << std::endl;

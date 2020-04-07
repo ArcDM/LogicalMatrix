@@ -31,6 +31,9 @@ class LogicalMatrix
         std::map< std::string, Operator > AND_matrix;
         std::vector< std::vector< bool > > OR_matrix;
 
+        LogicalMatrix OR_helper( const LogicalMatrix &other, const bool &add );
+        void trim();
+
     public:
         class Logicalstatementexception: public std::exception
         {
@@ -51,11 +54,12 @@ class LogicalMatrix
         LogicalMatrix operator &=( const LogicalMatrix &other );
         LogicalMatrix operator |( const LogicalMatrix &other ) const;
         LogicalMatrix operator |=( const LogicalMatrix &other );
+        LogicalMatrix operator +( const LogicalMatrix &other ) const;
+        LogicalMatrix operator +=( const LogicalMatrix &other );
         bool operator ==( const LogicalMatrix &other ) const;
         bool operator <( const LogicalMatrix &other ) const;
         bool empty() const;
         void clear();
-        void trim();
         void debug_print() const;
 };
 
