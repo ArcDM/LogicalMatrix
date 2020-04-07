@@ -19,13 +19,13 @@
  */
 
 
-LogicalMatrix::Operator::Operator( const size_t depth )
+LogicalMatrix::TruthTable::TruthTable( const size_t depth )
 {
     True = std::vector< bool >( depth, false );
     False = std::vector< bool >( depth, false );
 }
 
-LogicalMatrix::Operator::Operator( const size_t depth, const bool condition )
+LogicalMatrix::TruthTable::TruthTable( const size_t depth, const bool condition )
 {
     True = std::vector< bool >( depth, false );
     False = std::vector< bool >( depth, false );
@@ -40,12 +40,12 @@ LogicalMatrix::Operator::Operator( const size_t depth, const bool condition )
     }
 }
 
-bool LogicalMatrix::Operator::operator ==( const Operator &other ) const
+bool LogicalMatrix::TruthTable::operator ==( const TruthTable &other ) const
 {
     return ( True == other.True ) && ( False == other.False );
 }
 
-bool LogicalMatrix::Operator::operator <( const Operator &other ) const
+bool LogicalMatrix::TruthTable::operator <( const TruthTable &other ) const
 {
     if( True == other.True )
     {
@@ -58,9 +58,9 @@ bool LogicalMatrix::Operator::operator <( const Operator &other ) const
 }
 
 // not used
-LogicalMatrix::Operator LogicalMatrix::Operator::operator !() const
+LogicalMatrix::TruthTable LogicalMatrix::TruthTable::operator !() const
 {
-    Operator result( *this );
+    TruthTable result( *this );
     result.True = False;
     result.False = True;
     return result;
@@ -144,7 +144,7 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
 
             if( not_empty )
             {
-                temp_matrix.AND_matrix[ piece ] = Operator( 1, !negated );
+                temp_matrix.AND_matrix[ piece ] = TruthTable( 1, !negated );
                 temp_matrix.OR_matrix = {{ true }};
                 negated = false;
             }
@@ -293,7 +293,7 @@ LogicalMatrix LogicalMatrix::operator !() const
         if( value )
         {
             depth += 1;
-            temp_matrix.AND_matrix[ key ] = Operator( depth, conditional );
+            temp_matrix.AND_matrix[ key ] = TruthTable( depth, conditional );
         }
     };
 
@@ -387,7 +387,7 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
         }
     };
 
-    // ensures each Operator has the correct length of data
+    // ensures each TruthTable has the correct length of data
     for( auto& [ key, data ] : AND_matrix )
     {
         stretch_vector( data.True, newsize, other_size );
@@ -397,10 +397,10 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
 
     for( auto const& [ key, data ] : other.AND_matrix )
     {
-        // adds each Operator from other to this if needed
+        // adds each TruthTable from other to this if needed
         if( AND_matrix.count( key ) == 0 )
         {
-            AND_matrix[ key ] = Operator( newsize );
+            AND_matrix[ key ] = TruthTable( newsize );
         }
 
         index = 0;
@@ -498,10 +498,10 @@ LogicalMatrix LogicalMatrix::OR_helper( const LogicalMatrix &other, const bool &
 
     for( auto const& [ key, data ] : other.AND_matrix )
     {
-        // adds each Operator from other to this if needed
+        // adds each TruthTable from other to this if needed
         if( AND_matrix.count( key ) == 0 )
         {
-            AND_matrix[ key ] = Operator( old_size );
+            AND_matrix[ key ] = TruthTable( old_size );
         }
 
         extend_vector( AND_matrix[ key ].True, data.True );
@@ -637,7 +637,7 @@ void LogicalMatrix::trim()
                     {
                         remove_subset( inner_index );
 
-                        // check to see if each Operator is still relevent
+                        // check to see if each TruthTable is still relevent
                         for( auto AND_iter = AND_matrix.begin(); AND_iter != AND_matrix.end(); )
                         {
                             temp_bool = false;

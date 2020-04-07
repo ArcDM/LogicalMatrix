@@ -16,19 +16,19 @@
 class LogicalMatrix
 {
     private:
-        class Operator
+        class TruthTable
         {
             public:
                 std::vector< bool > True, False;
 
-                Operator( const size_t depth = 1 );
-                Operator( const size_t depth, const bool condition );
-                bool operator ==( const Operator &other ) const;
-                bool operator <( const Operator &other ) const;
-                Operator operator !() const;
+                TruthTable( const size_t depth = 1 );
+                TruthTable( const size_t depth, const bool condition );
+                bool operator ==( const TruthTable &other ) const;
+                bool operator <( const TruthTable &other ) const;
+                TruthTable operator !() const;
         };
 
-        std::map< std::string, Operator > AND_matrix;
+        std::map< std::string, TruthTable > AND_matrix;
         std::vector< std::vector< bool > > OR_matrix;
 
         LogicalMatrix OR_helper( const LogicalMatrix &other, const bool &add );
