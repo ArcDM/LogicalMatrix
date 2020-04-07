@@ -418,24 +418,23 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
     }
 
     index = 0;
-    count = 0;
 
     // multiplys OR_matrix with other.OR_matrix
     for( std::vector< bool > const& statement : OR_matrix )
     {
         for( std::vector< bool > const& other_statement : other.OR_matrix )
         {
-            temp_OR_vector[ count ] = std::vector< bool >( newsize );
+            temp_OR_vector[ index ].reserve( newsize );
 
             for( bool const& value : statement )
             {
                 for( bool const& other_value : other_statement )
                 {
-                    temp_OR_vector[ count ][ index++ ] = value & other_value;
+                    temp_OR_vector[ index ].push_back( value & other_value );
                 }
             }
 
-            ++count;
+            ++index;
         }
     }
 
@@ -563,7 +562,7 @@ void LogicalMatrix::trim()
     size_t index, inner_index, size = OR_matrix[ 0 ].size();
     bool temp_bool;
 
-    std::vector< std::vector< bool > > has_subset( size, std::vector< bool >( size, true ) );
+    std::vector< std::vector< bool > > is_subset( size, std::vector< bool >( size, true ) );
 
     auto analyze_subsets = [&]( const std::vector< bool > &input_vector )
     {
@@ -571,7 +570,7 @@ void LogicalMatrix::trim()
         {
             for( inner_index = 0; inner_index < size; ++inner_index )
             {
-                has_subset[ inner_index ][ index ] = has_subset[ inner_index ][ index ] & !input_vector[ inner_index ];
+                is_subset[ inner_index ][ index ] = is_subset[ inner_index ][ index ] & !input_vector[ inner_index ];
             }
         }
     };
@@ -589,9 +588,9 @@ void LogicalMatrix::trim()
             statement.erase( statement.begin() + remove_index );
         }
 
-        has_subset.erase( has_subset.begin() + remove_index );
+        is_subset.erase( is_subset.begin() + remove_index );
 
-        for( std::vector< bool >& each_set : has_subset )
+        for( std::vector< bool >& each_set : is_subset )
         {
             each_set.erase( each_set.begin() + remove_index );
         }
@@ -613,10 +612,10 @@ void LogicalMatrix::trim()
     {
         for( inner_index = 0; inner_index < size; ++inner_index )
         {
-            if( index != inner_index && has_subset[ index ][ inner_index ] )
+            if( index != inner_index && is_subset[ index ][ inner_index ] )
             {
-                if( has_subset[ index ][ inner_index ] == has_subset[ inner_index ][ index ] )
-                { // B is subset of A, A is subset of B, and B == A : combine A and B, remove B
+                if( is_subset[ index ][ inner_index ] == is_subset[ inner_index ][ index ] )
+                { // A is subset of B, B is subset of A, and A == B : combine A and B, remove B
                     for( std::vector< bool >& statement : OR_matrix )
                     {
                         statement[ index ] = statement[ index ] | statement[ inner_index ];
@@ -625,15 +624,16 @@ void LogicalMatrix::trim()
                     remove_subset( inner_index );
                 }
                 else
-                {
-                    temp_bool = true;
+                { // A is subset of B and A != B
+                    temp_bool = false;
 
                     for( std::vector< bool >& statement : OR_matrix )
-                    { // check if each statement uses these indexes equivalently
-                        temp_bool &= ( statement[ index ] == statement[ inner_index ] );
+                    { // if A then remove B
+                        statement[ inner_index ] = statement[ index ]? false : statement[ inner_index ];
+                        temp_bool |= statement[ inner_index ];
                     }
 
-                    if( temp_bool ) // B is subset of A and B != A : remove B
+                    if( !temp_bool ) // B is empty
                     {
                         remove_subset( inner_index );
 
