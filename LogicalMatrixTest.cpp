@@ -36,6 +36,11 @@ std::ostream &operator<<( std::ostream &output, const std::map< std::string, boo
 {
     bool first = true;
 
+    if( object_arg.empty() )
+    {
+        output << "nothing";
+    }
+
     for( auto const& [ key, value ] : object_arg )
     {
         if( first )
@@ -114,11 +119,13 @@ bool test_evaluate( const std::string &tested, const std::map< std::string, bool
 {
     try
     {
-        std::vector< bool > result_vector = LogicalMatrix( tested ).evaluate( test_map );
+        LogicalMatrix test_parser = LogicalMatrix( tested );
+        std::vector< bool > result_vector = test_parser.evaluate( test_map );
         bool result = ( result_vector == expected );
 
         if( display || !result )
         {
+            test_parser.debug_print();
             std::cout << "Testing \"" << tested << "\" with evaluate function\nusing " << test_map << std::endl
                 << result_vector << std::endl << "Test "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
         }
@@ -219,13 +226,13 @@ int main( int argc, char const *argv[] )
     {
         result &= test( " d & c & b & a", "a & b & c & d" );
         result &= test( " a & b & c & space space", "a & b & c & space space" );
-        result &= test( " NOT a AND b & c OR d ", "!a & b & c | d" );
+        result &= test( "NOTaANDb&cORd", "!a & b & c | d" );
         result &= test( "a && !b || c & d ", "a & !b | c & d" );
         result &= test( "a &  b | !c | space     space", "a & b | !c | space     space" );
-        result &= test( "a  |  b & c & !   d", "a | b & c & !d" );
+        result &= test( "a  |  b & c & !       d", "a | b & c & !d" );
         result &= test( "!a|b&c|!d", "!a | b & c | !d" );
-        result &= test( "a | !b | ! !  !c & d", "a | !b | !c & d" );
-        result &= test( "!a | !!b | !!!c | !!!!d", "!a | b | !c | d" );
+        result &= test( "a | !b | ! !  !c AND d", "a | !b | !c & d" );
+        result &= test( "!a | !!b OR !!!c | !!!!d", "!a | b | !c | d" );
     }
 
     if( true )
@@ -279,6 +286,7 @@ int main( int argc, char const *argv[] )
 
     if( true )
     {
+        result &= test( "( a | b ) & c", "a & c | b & c" );
         result &= test( " a & (b || c) | d", "a & b | a & c | d" );
         result &= test( "a && (b | c) & d ", "a & b & d | a & c & d" );
         result &= test( "a || (b && c) & d", "a | b & c & d" );
@@ -413,6 +421,12 @@ int main( int argc, char const *argv[] )
         result &= test_evaluate( "a & b | e & f, c | d | e & f", test_map, { 0, 1 } );
         result &= test_evaluate( "a & b, a & b | d & e, a & b | c | d, c | d", test_map, { 0, 0, 1, 1 } );
         result &= test_evaluate( "a | b, a & b | c & d, a & b | e, c | d | a | b, c | d, e | c | d", test_map, { 1, 0, 0, 1, 1, 1 } );
+
+        result &= test_evaluate( "a & !a", { { "a", false } }, { 0 } );
+        result &= test_evaluate( "a & !a", { { "a", true } }, { 0 } );
+        result &= test_evaluate( "a | !a", { { "a", false } }, { 1 } );
+        result &= test_evaluate( "a | !a", { { "a", true } }, { 1 } );
+        result &= test_evaluate( "a | !a", { }, { 0 } );
     }
 
     if( true )
