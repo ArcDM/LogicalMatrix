@@ -3,7 +3,7 @@ This project reads a logical statement and creates an intermediate class similar
 Multiple logical statements can be contained in the same structure without much extra space needed.
 The LogicalMatrix can also be evaluated using given truth values of its identifiers.
 
-The symbols `,` `(` `)` `&` `&&` `|` `||` `!` `AND` `OR` `NOT` are used to parse the logical statement and are reserved.
+The symbols `,` `(` `)` `&` `&&` `|` `||` `!` `AND` `OR` `NOT` `\n` are used to parse the logical statement and are reserved.
 Any symbols not reserved can be used as identifiers with in a given logical statement.
 
 Logical statement will all simplify to AND sets separated by ORs.

@@ -119,7 +119,7 @@ bool test_evaluate( const std::string &tested, const std::map< std::string, bool
 {
     try
     {
-        LogicalMatrix test_parser = LogicalMatrix( tested );
+        LogicalMatrix test_parser( tested );
         std::vector< bool > result_vector = test_parser.evaluate( test_map );
         bool result = ( result_vector == expected );
 
@@ -147,7 +147,7 @@ bool test_evaluate_full( const std::string &tested, const bool &display = false 
 
     try
     {
-        LogicalMatrix test_matrix = LogicalMatrix( tested );
+        LogicalMatrix test_matrix( tested );
         std::set< std::string > test_values = test_matrix.get_unique_identifiers();
         size_t counter, isolator, length = 1 << test_values.size();
         std::map< std::string, bool > test_map;
@@ -241,7 +241,7 @@ int main( int argc, char const *argv[] )
         {
             if( true )
             {
-                LogicalMatrix left_value = LogicalMatrix( "a & b" );
+                LogicalMatrix left_value( "a & b" );
                 LogicalMatrix right_values[] = {
                     LogicalMatrix(),
                     LogicalMatrix( "c & d" ),
@@ -297,13 +297,14 @@ int main( int argc, char const *argv[] )
         result &= test( "a & ( b | ( c & d ) )", "a & b | a & c & d" );
         result &= test( " a & ( b & ( c | d ) ) ", "a & b & c | a & b & d" );
         result &= test( "((a & b))", "a & b" );
+        result &= test( "a | ( a & b | a & c)", "a" );
     }
 
     if( true )
     {
         result &= test( "a & b, c | d", "a & b, c | d" );
         result &= test( "a & b | e & f, c | d | e & f", "a & b | e & f, e & f | c | d" );
-        result &= test( "a & b, a & b | d & e, a & b | c | d, c | d", "a & b, a & b | d & e, a & b | c | d, c | d" );
+        result &= test( "a & b, a & b | d & e\na & b | c | d, c | d", "a & b, a & b | d & e, a & b | c | d, c | d" );
         result &= test( "a | b, a & b | c & d, a & b | e, c | d | a | b, c | d, e | c | d", "a | b, a & b | c & d, a & b | e, a | b | c | d, c | d, e | c | d" );
     }
 
@@ -326,7 +327,7 @@ int main( int argc, char const *argv[] )
         {
             if( true )
             {
-                LogicalMatrix left_value = LogicalMatrix( "a & b" );
+                LogicalMatrix left_value( "a & b" );
                 LogicalMatrix right_values[] = {
                     LogicalMatrix(),
                     LogicalMatrix( "c & d" ),
@@ -351,7 +352,7 @@ int main( int argc, char const *argv[] )
 
             if( true )
             {
-                LogicalMatrix left_value = LogicalMatrix( "a & b, c | d" );
+                LogicalMatrix left_value( "a & b, c | d" );
                 LogicalMatrix right_values[] = {
                     LogicalMatrix(),
                     LogicalMatrix( "e & f" ),
@@ -375,6 +376,24 @@ int main( int argc, char const *argv[] )
             {
                 result &= test( !LogicalMatrix( "a & b, !a | !b, a & !b | c & d, !a & b & c | d & !e & f | g & h & !i" ),
                     "!a | !b, a & b, !a & !c | !a & !d | b & !c | b & !d, a & !d & !g | a & !d & !h | a & !d & i | a & e & !g | a & e & !h | a & e & i | a & !f & !g | a & !f & !h | a & !f & i | !b & !d & !g | !b & !d & !h | !b & !d & i | !b & e & !g | !b & e & !h | !b & e & i | !b & !f & !g | !b & !f & !h | !b & !f & i | !c & !d & !g | !c & !d & !h | !c & !d & i | !c & e & !g | !c & e & !h | !c & e & i | !c & !f & !g | !c & !f & !h | !c & !f & i" );
+            }
+
+            if( true )
+            {
+                LogicalMatrix test_remove_matrix( "( a & b, c | d ) , ( a | b, c & d, e )" );
+
+                result &= test_remove_matrix.remove_statement( 2 );
+                result &= test( test_remove_matrix, "a & b, c | d, c & d, e" );
+                result &= !test_remove_matrix.remove_statement( 8 );
+                result &= test( test_remove_matrix, "a & b, c | d, c & d, e" );
+                result &= !test_remove_matrix.remove_statement( 4 );
+                result &= test( test_remove_matrix, "a & b, c | d, c & d, e" );
+                result &= test_remove_matrix.remove_statement( 3 );
+                result &= test( test_remove_matrix, "a & b, c | d, c & d" );
+                result &= test_remove_matrix.remove_statement( 0 );
+                result &= test( test_remove_matrix, "c | d, c & d" );
+                result &= !LogicalMatrix().remove_statement( 5 );
+                result &= !LogicalMatrix().remove_statement( 0 );
             }
         }
         catch( LogicalMatrix::Logicalstatementexception &e )
@@ -431,7 +450,7 @@ int main( int argc, char const *argv[] )
 
     if( true )
     {
-        result &= test_evaluate_full( "( a & b, c | d ) & ( a | b, c & d, e )", true );
+        result &= test_evaluate_full( "( a & b, c | d ) & ( a | b, c & d, e )" );
     }
 
     std::cout << std::endl << ( result? "All tests passed" : "Tests FAILED" ) << std::endl << "\tTime elapsed: " <<

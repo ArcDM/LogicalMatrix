@@ -61,6 +61,7 @@ class LogicalMatrix
         bool operator <( const LogicalMatrix &other ) const;
         bool empty() const;
         void clear();
+        bool remove_statement( const size_t &remove_index );
         void debug_print() const;
 };
 
