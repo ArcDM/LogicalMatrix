@@ -31,7 +31,7 @@ class LogicalMatrix
         std::map< std::string, TruthTable > AND_matrix;
         std::vector< std::vector< bool > > OR_matrix;
 
-        LogicalMatrix OR_helper( const LogicalMatrix &other, const bool &add );
+        void OR_helper( const LogicalMatrix &other );
         void trim();
 
     public:
@@ -62,6 +62,8 @@ class LogicalMatrix
         bool empty() const;
         void clear();
         bool remove_statement( const size_t &remove_index );
+        std::vector< LogicalMatrix > split() const;
+        void combine();
         void debug_print() const;
 };
 

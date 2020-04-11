@@ -95,6 +95,37 @@ static inline bool trim_string(std::string &s) {
     return !s.empty();
 }
 
+template< typename Type >
+static inline void extend_vector( std::vector< Type > &input_vector, const std::vector< Type > &additional_vector, const size_t newsize )
+{
+    size_t offset = input_vector.size() + additional_vector.size() - newsize;
+    input_vector.reserve( newsize );
+
+    std::copy( additional_vector.begin() + offset, additional_vector.end(), std::back_inserter( input_vector ) );
+}
+
+template< typename Type >
+static inline std::vector< Type > stretch_vector( const std::vector< Type > &input_vector, const size_t &newsize, const size_t &stretch_factor )
+{
+    if( stretch_factor <= 1 )
+    {
+        return input_vector;
+    }
+
+    size_t count, index = 0;
+    std::vector< Type > result_vector = std::vector< Type >( newsize );
+
+    for( Type const& value : input_vector )
+    {
+        for( count = 0; count < stretch_factor; ++count )
+        {
+            result_vector[ index++ ] = value;
+        }
+    }
+
+    return result_vector;
+}
+
 // Construct from parsing a string
 // This is where the class parses the string
 // Recursion is possible depending on the input_string
@@ -139,7 +170,7 @@ LogicalMatrix::LogicalMatrix( const std::string &input_string )
             if( not_empty )
             {
                 temp_matrix.AND_matrix[ piece ] = TruthTable( 1, !negated );
-                temp_matrix.OR_matrix = {{ true }};
+                temp_matrix.OR_matrix.push_back( { true } );
                 negated = false;
             }
         }
@@ -280,23 +311,37 @@ std::set< std::string > LogicalMatrix::get_unique_identifiers() const
 LogicalMatrix LogicalMatrix::operator !() const
 {
     size_t index, depth, old_size = OR_matrix[ 0 ].size();
-    LogicalMatrix result_matrix, cumulative_AND, temp_matrix;
+    LogicalMatrix result_matrix, cumulative_AND, temp_matrix[ old_size ];
     std::vector< bool > temp_vector;
 
-    auto build_operator = [ &depth, &temp_matrix ]( const bool &value, const std::string &key, const bool &conditional )
+    auto build_operator = [ &index, &depth, &temp_matrix ]( const bool &value, const std::string &key, const bool &conditional )
     {
         if( value )
         {
             depth += 1;
-            temp_matrix.AND_matrix[ key ] = TruthTable( depth, conditional );
+            temp_matrix[ index ].AND_matrix[ key ] = TruthTable( depth, conditional );
         }
     };
 
-    auto extend_vector = [ &depth, &temp_vector ]( std::vector< bool > &input_vector )
+    for( index = 0; index < old_size; ++index )
     {
-        input_vector.reserve( depth );
-        std::copy( temp_vector.begin() + input_vector.size(), temp_vector.end(), std::back_inserter( input_vector ) );
-    };
+        depth = 0;
+
+        for( auto const& [ key, data ] : AND_matrix )
+        {
+            build_operator( data.True[ index ], key, false );
+            build_operator( data.False[ index ], key, true );
+        }
+
+        temp_vector = std::vector< bool >( depth, false );
+        temp_matrix[ index ].OR_matrix.push_back( std::vector< bool >( depth, true ) );
+
+        for( auto& [ key, data ] : temp_matrix[ index ].AND_matrix )
+        {
+            extend_vector( data.True, temp_vector, depth );
+            extend_vector( data.False, temp_vector, depth );
+        }
+    }
 
     for( std::vector< bool > const& statement : OR_matrix )
     {
@@ -304,26 +349,7 @@ LogicalMatrix LogicalMatrix::operator !() const
         {
             if( statement[ index ] )
             {
-                depth = 0;
-
-                for( auto const& [ key, data ] : AND_matrix )
-                {
-                    build_operator( data.True[ index ], key, false );
-                    build_operator( data.False[ index ], key, true );
-                }
-
-                temp_vector = std::vector< bool >( depth, false );
-                temp_matrix.OR_matrix.push_back( std::vector< bool >( depth, true ) );
-
-                for( auto& [ key, data ] : temp_matrix.AND_matrix )
-                {
-                    extend_vector( data.True );
-                    extend_vector( data.False );
-                }
-
-                cumulative_AND &= temp_matrix;
-                temp_vector.clear();
-                temp_matrix.clear();
+                cumulative_AND &= temp_matrix[ index ];
             }
         }
 
@@ -361,34 +387,14 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
         other_size = other.OR_matrix[ 0 ].size();
     size_t newsize = old_size * other_size,
         index, other_index, count;
-    std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.OR_matrix.size() * OR_matrix.size() );
-
-    auto stretch_vector = [ &index, &count ]( std::vector< bool > &input_vector, const int &newsize, const int &stretch_factor )
-    {
-        if( stretch_factor > 1 )
-        {
-            index = 0;
-            std::vector< bool > result_vector = std::vector< bool >( newsize );
-
-            for( bool const& value : input_vector )
-            {
-                for( count = 0; count < stretch_factor; ++count )
-                {
-                    result_vector[ index++ ] = value;
-                }
-            }
-
-            input_vector = result_vector;
-        }
-    };
+    std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.OR_matrix.size() * OR_matrix.size(), std::vector< bool >( newsize ) );
 
     // ensures each TruthTable has the correct length of data
     for( auto& [ key, data ] : AND_matrix )
     {
-        stretch_vector( data.True, newsize, other_size );
-        stretch_vector( data.False, newsize, other_size );
+        data.True = stretch_vector( data.True, newsize, other_size );
+        data.False = stretch_vector( data.False, newsize, other_size );
     }
-
 
     for( auto const& [ key, data ] : other.AND_matrix )
     {
@@ -419,13 +425,13 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
     {
         for( std::vector< bool > const& other_statement : other.OR_matrix )
         {
-            temp_OR_vector[ index ].reserve( newsize );
+            other_index = 0;
 
             for( bool const& value : statement )
             {
                 for( bool const& other_value : other_statement )
                 {
-                    temp_OR_vector[ index ].push_back( value & other_value );
+                    temp_OR_vector[ index ][ other_index++ ] = value & other_value;
                 }
             }
 
@@ -451,10 +457,83 @@ LogicalMatrix LogicalMatrix::operator |( const LogicalMatrix &other ) const
 // OR assignment
 LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
 {
-    return OR_helper( other, false );
+    if( other.empty() )
+    {
+        return *this;
+    }
+
+    if( empty() )
+    {
+        *this = other;
+        return *this;
+    }
+
+    OR_helper( other );
+
+    size_t index = 0, newsize = OR_matrix[ 0 ].size() + other.OR_matrix[ 0 ].size();
+    std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.OR_matrix.size() * OR_matrix.size() );
+
+    for( std::vector< bool > const& statement : OR_matrix )
+    {
+        for( std::vector< bool > const& other_statement : other.OR_matrix )
+        {
+            temp_OR_vector[ index ] = statement;
+            extend_vector( temp_OR_vector[ index ], other_statement, newsize );
+            ++index;
+        }
+    }
+
+    OR_matrix = temp_OR_vector;
+
+    trim();
+
+    return *this;
 }
 
-LogicalMatrix LogicalMatrix::OR_helper( const LogicalMatrix &other, const bool &add )
+void LogicalMatrix::OR_helper( const LogicalMatrix &other )
+{
+    if( other.empty() )
+    {
+        return;
+    }
+
+    size_t old_size = OR_matrix[ 0 ].size(),
+        other_size = other.OR_matrix[ 0 ].size();
+    size_t newsize = old_size + other_size;
+
+    std::vector< bool > temp_vector( other_size, false );
+
+    // extend keys found in this and not other with FALSE
+    for( auto& [ key, data ] : AND_matrix )
+    {
+        if( other.AND_matrix.count( key ) == 0 )
+        {
+            extend_vector( data.True, temp_vector, newsize );
+            extend_vector( data.False, temp_vector, newsize );
+        }
+    }
+
+    for( auto const& [ key, data ] : other.AND_matrix )
+    {
+        // adds each TruthTable from other to this if needed
+        if( AND_matrix.count( key ) == 0 )
+        {
+            AND_matrix[ key ] = TruthTable( old_size );
+        }
+
+        extend_vector( AND_matrix[ key ].True, data.True, newsize );
+        extend_vector( AND_matrix[ key ].False, data.False, newsize );
+    }
+}
+
+LogicalMatrix LogicalMatrix::operator +( const LogicalMatrix &other ) const
+{
+    LogicalMatrix new_matrix( *this );
+    new_matrix += other;
+    return new_matrix;
+}
+
+LogicalMatrix LogicalMatrix::operator +=( const LogicalMatrix &other )
 {
     if( other.empty() )
     {
@@ -467,88 +546,30 @@ LogicalMatrix LogicalMatrix::OR_helper( const LogicalMatrix &other, const bool &
         return *this;
     }
 
+    OR_helper( other );
+
     size_t old_size = OR_matrix[ 0 ].size(),
         other_size = other.OR_matrix[ 0 ].size();
-    size_t index, count, newsize = old_size + other_size;
-    bool temp_bool;
+    size_t newsize = old_size + other_size;
 
     std::vector< bool > temp_vector( other_size, false );
 
-    auto extend_vector = [ &newsize ]( std::vector< bool > &input_vector, const std::vector< bool > &additional_vector )
-    {
-        input_vector.reserve( newsize );
+    OR_matrix.reserve( newsize );
 
-        std::copy( additional_vector.begin(), additional_vector.end(), std::back_inserter( input_vector ) );
-    };
-
-    // extend keys found in this and not other with FALSE
-    for( auto& [ key, data ] : AND_matrix )
+    for( std::vector< bool >& statement : OR_matrix )
     {
-        if( other.AND_matrix.count( key ) == 0 )
-        {
-            extend_vector( data.True, temp_vector );
-            extend_vector( data.False, temp_vector );
-        }
+        extend_vector( statement, temp_vector, newsize );
     }
 
-    for( auto const& [ key, data ] : other.AND_matrix )
+    for( std::vector< bool > const& statement : other.OR_matrix )
     {
-        // adds each TruthTable from other to this if needed
-        if( AND_matrix.count( key ) == 0 )
-        {
-            AND_matrix[ key ] = TruthTable( old_size );
-        }
-
-        extend_vector( AND_matrix[ key ].True, data.True );
-        extend_vector( AND_matrix[ key ].False, data.False );
-    }
-
-    if( add )
-    {
-        for( std::vector< bool >& statement : OR_matrix )
-        {
-            extend_vector( statement, temp_vector );
-        }
-
-        for( std::vector< bool > const& statement : other.OR_matrix )
-        {
-            OR_matrix.push_back( std::vector< bool >( old_size, false ) );
-            extend_vector( OR_matrix.back(), statement );
-        }
-    }
-    else
-    {
-        index = 0;
-        std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.OR_matrix.size() * OR_matrix.size() );
-
-        for( std::vector< bool > const& statement : OR_matrix )
-        {
-            for( std::vector< bool > const& other_statement : other.OR_matrix )
-            {
-                temp_OR_vector[ index ] = statement;
-                extend_vector( temp_OR_vector[ index ], other_statement );
-                ++index;
-            }
-        }
-
-        OR_matrix = temp_OR_vector;
+        OR_matrix.push_back( std::vector< bool >( old_size, false ) );
+        extend_vector( OR_matrix.back(), statement, newsize );
     }
 
     trim();
 
     return *this;
-}
-
-LogicalMatrix LogicalMatrix::operator +( const LogicalMatrix &other ) const
-{
-    LogicalMatrix new_matrix( *this );
-    new_matrix += other;
-    return new_matrix;
-}
-
-LogicalMatrix LogicalMatrix::operator +=( const LogicalMatrix &other )
-{
-    return OR_helper( other, true );
 }
 
 // This function consolidates duplicate AND sets
@@ -701,6 +722,33 @@ bool LogicalMatrix::remove_statement( const size_t &remove_index )
     return false;
 }
 
+std::vector< LogicalMatrix > LogicalMatrix::split() const
+{
+    size_t index, depth = OR_matrix.size();
+    std::vector< LogicalMatrix > result = std::vector< LogicalMatrix >( depth );
+
+    for( index = 0; index < depth; ++index )
+    {
+        result[ index ].AND_matrix = AND_matrix;
+        result[ index ].OR_matrix.push_back( OR_matrix[ index ] );
+        result[ index ].trim();
+    }
+
+    return result;
+}
+
+void LogicalMatrix::combine()
+{
+    std::vector< LogicalMatrix > split_vector = split();
+
+    clear();
+
+    for( auto const& individual_LM : split_vector )
+    {
+        *this &= individual_LM;
+    }
+}
+
 bool LogicalMatrix::operator ==( const LogicalMatrix &other ) const
 {
     return ( AND_matrix == other.AND_matrix ) && ( OR_matrix == other.OR_matrix );
@@ -720,9 +768,9 @@ bool LogicalMatrix::operator <( const LogicalMatrix &other ) const
 
 std::vector< bool > LogicalMatrix::evaluate( std::map< std::string, bool > identifiers ) const
 {
-    size_t index, size = OR_matrix[ 0 ].size();
+    size_t index, inner_index, size = OR_matrix[ 0 ].size(), depth = OR_matrix.size();
     std::vector< bool > truth_table( size, true );
-    std::vector< bool > result;
+    std::vector< bool > result( depth, false );
 
     for( auto const& [ key, data ] : AND_matrix )
     {
@@ -752,15 +800,13 @@ std::vector< bool > LogicalMatrix::evaluate( std::map< std::string, bool > ident
         }
     }
 
-    for( std::vector< bool > const& statement : OR_matrix )
+    for( index = 0; index < depth; ++index )
     {
-        result.push_back( false );
-
-        for( index = 0; index < size; ++index )
+        for( inner_index = 0; inner_index < size; ++inner_index )
         {
-            if( truth_table[ index ] && statement[ index ] )
+            if( truth_table[ inner_index ] && OR_matrix[ index ][ inner_index ] )
             {
-                result.back() = true;
+                result[ index ] = true;
                 break;
             }
         }
