@@ -233,7 +233,7 @@ int main( int argc, char const *argv[] )
         result &= test( " d & c & b & a", "a & b & c & d" );
         result &= test( " a & b & c & space space", "a & b & c & space space" );
         result &= test( "NOTaANDb&cORd", "!a & b & c | d" );
-        result &= test( "a && !b || c & d ", "a & !b | c & d" );
+        result &= test( "a && NOT b || c & d ", "a & !b | c & d" );
         result &= test( "a &  b | !c | space     space", "a & b | !c | space     space" );
         result &= test( "a  |  b & c & !       d", "a | b & c & !d" );
         result &= test( "!a|b&c|!d", "!a | b & c | !d" );
@@ -476,7 +476,11 @@ int main( int argc, char const *argv[] )
         for( short index = 0; index < 3; ++index )
         {
             result &= test( split_vector[ index ], split_expected[ index ] );
+            result &= test( test_matrix.isolate_statement( index ), split_expected[ index ] );
         }
+
+        result &= test( test_matrix.isolate_statement( 3 ), "" );
+        result &= test( test_matrix.isolate_statement( 8 ), "" );
 
         test_matrix.combine();
 
@@ -490,8 +494,16 @@ int main( int argc, char const *argv[] )
         result &= test( test_matrix, "" );
         result &= test( !test_matrix, "" );
 
+        result &= ( test_matrix == !test_matrix );
+
         result &= ( test_matrix.split().size() == 0 );
         result &= ( test_matrix.get_unique_identifiers().size() == 0 );
+
+        result &= test( test_matrix.isolate_statement( 0 ), "" );
+        result &= test( test_matrix.isolate_statement( 3 ), "" );
+
+        result &= ( test_matrix == test_matrix.isolate_statement( 0 ) );
+        result &= ( test_matrix == test_matrix.isolate_statement( 5 ) );
 
         test_matrix.combine();
 
