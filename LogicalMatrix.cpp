@@ -752,7 +752,7 @@ LogicalMatrix LogicalMatrix::isolate_statement( const size_t &index ) const
     return result;
 }
 
-std::vector< LogicalMatrix > LogicalMatrix::split() const
+std::vector< LogicalMatrix > LogicalMatrix::split_statements() const
 {
     size_t index, depth = OR_matrix.size();
     std::vector< LogicalMatrix > result = std::vector< LogicalMatrix >( depth );
@@ -765,11 +765,11 @@ std::vector< LogicalMatrix > LogicalMatrix::split() const
     return result;
 }
 
-void LogicalMatrix::combine()
+void LogicalMatrix::combine_statements()
 {
     if( OR_matrix.size() > 1 )
     {
-        std::vector< LogicalMatrix > split_vector = split();
+        std::vector< LogicalMatrix > split_vector = split_statements();
 
         clear();
 

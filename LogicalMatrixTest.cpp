@@ -458,9 +458,9 @@ int main( int argc, char const *argv[] )
     {
         LogicalMatrix test_matrix( "a | b" );
 
-        result &= test( test_matrix.split()[ 0 ], "a | b" );
+        result &= test( test_matrix.split_statements()[ 0 ], "a | b" );
 
-        test_matrix.combine();
+        test_matrix.combine_statements();
 
         result &= test( test_matrix, "a | b" );
     }
@@ -471,7 +471,7 @@ int main( int argc, char const *argv[] )
 
         std::string split_expected[] = { "a | b", "c & d", "e" };
 
-        std::vector< LogicalMatrix > split_vector = test_matrix.split();
+        std::vector< LogicalMatrix > split_vector = test_matrix.split_statements();
 
         for( short index = 0; index < 3; ++index )
         {
@@ -482,7 +482,7 @@ int main( int argc, char const *argv[] )
         result &= test( test_matrix.isolate_statement( 3 ), "" );
         result &= test( test_matrix.isolate_statement( 8 ), "" );
 
-        test_matrix.combine();
+        test_matrix.combine_statements();
 
         result &= test( test_matrix, "a & c & d & e | b & c & d & e" );
     }
@@ -496,7 +496,7 @@ int main( int argc, char const *argv[] )
 
         result &= ( test_matrix == !test_matrix );
 
-        result &= ( test_matrix.split().size() == 0 );
+        result &= ( test_matrix.split_statements().size() == 0 );
         result &= ( test_matrix.get_unique_identifiers().size() == 0 );
 
         result &= test( test_matrix.isolate_statement( 0 ), "" );
@@ -505,7 +505,7 @@ int main( int argc, char const *argv[] )
         result &= ( test_matrix == test_matrix.isolate_statement( 0 ) );
         result &= ( test_matrix == test_matrix.isolate_statement( 5 ) );
 
-        test_matrix.combine();
+        test_matrix.combine_statements();
 
         result &= test( test_matrix, "" );
 
