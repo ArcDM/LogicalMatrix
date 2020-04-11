@@ -31,6 +31,7 @@ class LogicalMatrix
         std::map< std::string, TruthTable > AND_matrix;
         std::vector< std::vector< bool > > OR_matrix;
 
+        LogicalMatrix build_inverse( const size_t &index ) const;
         void extend_matrix( const LogicalMatrix &other );
         void trim();
 

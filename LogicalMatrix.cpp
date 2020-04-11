@@ -306,6 +306,38 @@ std::set< std::string > LogicalMatrix::get_unique_identifiers() const
     return result;
 }
 
+LogicalMatrix LogicalMatrix::build_inverse( const size_t &index ) const
+{
+    size_t depth = 0;
+    LogicalMatrix temp_matrix;
+
+    auto build_operator = [ &depth, &temp_matrix ]( const bool &value, const std::string &key, const bool &conditional )
+    {
+        if( value )
+        {
+            depth += 1;
+            temp_matrix.AND_matrix[ key ] = TruthTable( depth, conditional );
+        }
+    };
+
+    for( auto const& [ key, data ] : AND_matrix )
+    {
+        build_operator( data.True[ index ], key, false );
+        build_operator( data.False[ index ], key, true );
+    }
+
+    std::vector< bool > temp_vector = std::vector< bool >( depth, false );
+    temp_matrix.OR_matrix.push_back( std::vector< bool >( depth, true ) );
+
+    for( auto& [ key, data ] : temp_matrix.AND_matrix )
+    {
+        extend_vector( data.True, temp_vector, depth );
+        extend_vector( data.False, temp_vector, depth );
+    }
+
+    return temp_matrix;
+}
+
 LogicalMatrix LogicalMatrix::NOT()
 {
     *this = !(*this);
@@ -320,18 +352,8 @@ LogicalMatrix LogicalMatrix::NOT( const size_t &statement_index )
         return *this;
     }
 
-    size_t index, depth, newsize, extra_size, old_size = OR_matrix[ 0 ].size();
-    LogicalMatrix cumulative_AND, temp_matrix;
-    std::vector< bool > temp_vector;
-
-    auto build_operator = [ &depth, &temp_matrix ]( const bool &value, const std::string &key, const bool &conditional )
-    {
-        if( value )
-        {
-            depth += 1;
-            temp_matrix.AND_matrix[ key ] = TruthTable( depth, conditional );
-        }
-    };
+    size_t index, newsize, extra_size, old_size = OR_matrix[ 0 ].size();
+    LogicalMatrix cumulative_AND;
 
     for( index = 0; index < old_size; ++index )
     {
@@ -339,25 +361,7 @@ LogicalMatrix LogicalMatrix::NOT( const size_t &statement_index )
         {
             OR_matrix[ statement_index ][ index ] = false;
 
-            depth = 0;
-
-            for( auto const& [ key, data ] : AND_matrix )
-            {
-                build_operator( data.True[ index ], key, false );
-                build_operator( data.False[ index ], key, true );
-            }
-
-            temp_vector = std::vector< bool >( depth, false );
-            temp_matrix.OR_matrix.push_back( std::vector< bool >( depth, true ) );
-
-            for( auto& [ key, data ] : temp_matrix.AND_matrix )
-            {
-                extend_vector( data.True, temp_vector, depth );
-                extend_vector( data.False, temp_vector, depth );
-            }
-
-            cumulative_AND &= temp_matrix;
-            temp_matrix.clear();
+            cumulative_AND &= build_inverse( index );
         }
     }
 
@@ -366,7 +370,7 @@ LogicalMatrix LogicalMatrix::NOT( const size_t &statement_index )
     extra_size = cumulative_AND.OR_matrix[ 0 ].size();
     newsize = old_size + extra_size;
 
-    temp_vector = std::vector< bool >( extra_size, false );
+    std::vector< bool > temp_vector( extra_size, false );
 
     index = OR_matrix.size();
 
@@ -398,37 +402,12 @@ LogicalMatrix LogicalMatrix::operator !() const
         return LogicalMatrix();
     }
 
-    size_t index, depth, old_size = OR_matrix[ 0 ].size();
+    size_t index, old_size = OR_matrix[ 0 ].size();
     LogicalMatrix result_matrix, cumulative_AND, temp_matrix[ old_size ];
-    std::vector< bool > temp_vector;
-
-    auto build_operator = [ &index, &depth, &temp_matrix ]( const bool &value, const std::string &key, const bool &conditional )
-    {
-        if( value )
-        {
-            depth += 1;
-            temp_matrix[ index ].AND_matrix[ key ] = TruthTable( depth, conditional );
-        }
-    };
 
     for( index = 0; index < old_size; ++index )
     {
-        depth = 0;
-
-        for( auto const& [ key, data ] : AND_matrix )
-        {
-            build_operator( data.True[ index ], key, false );
-            build_operator( data.False[ index ], key, true );
-        }
-
-        temp_vector = std::vector< bool >( depth, false );
-        temp_matrix[ index ].OR_matrix.push_back( std::vector< bool >( depth, true ) );
-
-        for( auto& [ key, data ] : temp_matrix[ index ].AND_matrix )
-        {
-            extend_vector( data.True, temp_vector, depth );
-            extend_vector( data.False, temp_vector, depth );
-        }
+        temp_matrix[ index ] = build_inverse( index );
     }
 
     for( std::vector< bool > const& statement : OR_matrix )
