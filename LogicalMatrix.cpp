@@ -312,6 +312,83 @@ LogicalMatrix LogicalMatrix::NOT()
     return *this;
 }
 
+// Negate specific statement
+LogicalMatrix LogicalMatrix::NOT( const size_t &statement_index )
+{
+    if( statement_index >= OR_matrix.size() )
+    {
+        return *this;
+    }
+
+    size_t index, depth, newsize, extra_size, old_size = OR_matrix[ 0 ].size();
+    LogicalMatrix cumulative_AND, temp_matrix;
+    std::vector< bool > temp_vector;
+
+    auto build_operator = [ &depth, &temp_matrix ]( const bool &value, const std::string &key, const bool &conditional )
+    {
+        if( value )
+        {
+            depth += 1;
+            temp_matrix.AND_matrix[ key ] = TruthTable( depth, conditional );
+        }
+    };
+
+    for( index = 0; index < old_size; ++index )
+    {
+        if( OR_matrix[ statement_index ][ index ] )
+        {
+            OR_matrix[ statement_index ][ index ] = false;
+
+            depth = 0;
+
+            for( auto const& [ key, data ] : AND_matrix )
+            {
+                build_operator( data.True[ index ], key, false );
+                build_operator( data.False[ index ], key, true );
+            }
+
+            temp_vector = std::vector< bool >( depth, false );
+            temp_matrix.OR_matrix.push_back( std::vector< bool >( depth, true ) );
+
+            for( auto& [ key, data ] : temp_matrix.AND_matrix )
+            {
+                extend_vector( data.True, temp_vector, depth );
+                extend_vector( data.False, temp_vector, depth );
+            }
+
+            cumulative_AND &= temp_matrix;
+            temp_matrix.clear();
+        }
+    }
+
+    extend_matrix( cumulative_AND );
+
+    extra_size = cumulative_AND.OR_matrix[ 0 ].size();
+    newsize = old_size + extra_size;
+
+    temp_vector = std::vector< bool >( extra_size, false );
+
+    index = OR_matrix.size();
+
+    do {
+        --index;
+
+        if( index == statement_index )
+        {
+            OR_matrix[ statement_index ] = std::vector< bool >( old_size, false );
+            extend_vector( OR_matrix[ statement_index ], cumulative_AND.OR_matrix[ 0 ], newsize );
+        }
+        else
+        {
+            extend_vector( OR_matrix[ index ], temp_vector, newsize );
+        }
+    } while( index > 0 );
+
+    trim();
+
+    return *this;
+}
+
 // Negation
 // !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = !a & !c | !a & !d | b & !c | b & !d
 LogicalMatrix LogicalMatrix::operator !() const
@@ -491,7 +568,7 @@ LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
         return *this;
     }
 
-    OR_helper( other );
+    extend_matrix( other );
 
     size_t index = 0, newsize = OR_matrix[ 0 ].size() + other.OR_matrix[ 0 ].size();
     std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.OR_matrix.size() * OR_matrix.size() );
@@ -513,7 +590,7 @@ LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
     return *this;
 }
 
-void LogicalMatrix::OR_helper( const LogicalMatrix &other )
+void LogicalMatrix::extend_matrix( const LogicalMatrix &other )
 {
     if( other.empty() )
     {
@@ -581,7 +658,7 @@ LogicalMatrix LogicalMatrix::operator +=( const LogicalMatrix &other )
         return *this;
     }
 
-    OR_helper( other );
+    extend_matrix( other );
 
     size_t old_size = OR_matrix[ 0 ].size(),
         other_size = other.OR_matrix[ 0 ].size();
@@ -589,7 +666,7 @@ LogicalMatrix LogicalMatrix::operator +=( const LogicalMatrix &other )
 
     std::vector< bool > temp_vector( other_size, false );
 
-    OR_matrix.reserve( newsize );
+    OR_matrix.reserve( OR_matrix.size() + other.OR_matrix.size() );
 
     for( std::vector< bool >& statement : OR_matrix )
     {
@@ -762,14 +839,14 @@ bool LogicalMatrix::remove_statement( const size_t &remove_index )
     return false;
 }
 
-LogicalMatrix LogicalMatrix::isolate_statement( const size_t &index ) const
+LogicalMatrix LogicalMatrix::isolate_statement( const size_t &statement_index ) const
 {
     LogicalMatrix result;
 
-    if( index < OR_matrix.size() )
+    if( statement_index < OR_matrix.size() )
     {
         result.AND_matrix = AND_matrix;
-        result.OR_matrix.push_back( OR_matrix[ index ] );
+        result.OR_matrix.push_back( OR_matrix[ statement_index ] );
         result.trim();
     }
 

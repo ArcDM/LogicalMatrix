@@ -373,17 +373,9 @@ int main( int argc, char const *argv[] )
                 result &= test( LogicalMatrix( "!a | !b" ).NOT(), "a & b" );
                 result &= test( !LogicalMatrix( "a & !b | c & d" ), "!a & !c | !a & !d | b & !c | b & !d" );
                 result &= test( LogicalMatrix( "a & !b | c & d" ).NOT(), "!a & !c | !a & !d | b & !c | b & !d" );
+                result &= test( LogicalMatrix( "a & !b | c & d" ).NOT( 0 ), "!a & !c | !a & !d | b & !c | b & !d" );
                 result &= test( !LogicalMatrix( "!a & b & c | d & !e & f | g & h & !i" ),
                     "a & !d & !g | a & !d & !h | a & !d & i | a & e & !g | a & e & !h | a & e & i | a & !f & !g | a & !f & !h | a & !f & i | !b & !d & !g | !b & !d & !h | !b & !d & i | !b & e & !g | !b & e & !h | !b & e & i | !b & !f & !g | !b & !f & !h | !b & !f & i | !c & !d & !g | !c & !d & !h | !c & !d & i | !c & e & !g | !c & e & !h | !c & e & i | !c & !f & !g | !c & !f & !h | !c & !f & i" );
-            }
-
-            if( true )
-            {
-                LogicalMatrix test_matrix( "a & !b, c | d" );
-
-                result &= test_equality( test_matrix, !( !test_matrix ) );
-                result &= test_equality( test_matrix, !LogicalMatrix( "a & !b, c | d" ).NOT() );
-                result &= test_equality( test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT().NOT() );
             }
         }
         catch( LogicalMatrix::Logicalstatementexception &e )
@@ -508,6 +500,21 @@ int main( int argc, char const *argv[] )
 
             if( true )
             {
+                LogicalMatrix test_matrix( "a & !b, c | d" );
+
+                result &= test_equality( test_matrix, !( !test_matrix ) );
+                result &= test_equality( test_matrix, !LogicalMatrix( "a & !b, c | d" ).NOT() );
+                result &= test_equality( test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT().NOT() );
+                result &= test_equality( test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT( 1 ).NOT( 1 ) );
+                result &= test_equality( !test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT( 0 ).NOT( 1 ) );
+
+                result &= test( LogicalMatrix( "a & !b, !c | d, e" ).NOT( 0 ), "!a | b, !c | d, e" );
+                result &= test( LogicalMatrix( "a & !b, !c | d, e" ).NOT( 1 ), "a & !b, c & !d, e" );
+                result &= test( LogicalMatrix( "a & !b, !c | d, e" ).NOT( 2 ), "a & !b, !c | d, !e" );
+            }
+
+            if( true )
+            {
                 LogicalMatrix test_remove_matrix( "( a & b, c | d ) , ( a | b, c & d, e )" );
 
                 result &= test_remove( test_remove_matrix, 2 );
@@ -624,6 +631,9 @@ int main( int argc, char const *argv[] )
 
                 result &= test_equality( test_matrix, test_matrix.isolate_statement( 0 ) );
                 result &= test_equality( test_matrix, test_matrix.isolate_statement( 5 ) );
+
+                result &= test_equality( test_matrix, test_matrix.NOT( 0 ) );
+                result &= test_equality( test_matrix, test_matrix.NOT( 5 ) );
 
                 test_matrix.combine_statements();
 
