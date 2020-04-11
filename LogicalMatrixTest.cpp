@@ -58,6 +58,32 @@ std::ostream &operator<<( std::ostream &output, const std::map< std::string, boo
     return output;
 }
 
+// used to print a generic vector
+template< typename Type >
+std::ostream &operator<<( std::ostream &output, const std::vector< Type > &object_arg )
+{
+    bool first = true;
+
+    for( auto const& matrix : object_arg )
+    {
+        if( first )
+        {
+            first = false;
+            output << "[ ";
+        }
+        else
+        {
+            output << ", ";
+        }
+
+        output << matrix;
+    }
+
+    output << " ]";
+
+    return output;
+}
+
 // Testing function for a given LogicalMatrix versus the expected result
 bool test( const LogicalMatrix &test_matrix, const std::string &expected, const bool &display = false )
 {
@@ -113,6 +139,22 @@ bool test( const std::string &tested, const std::string &expected, const bool &d
     }
 
     return false;
+}
+
+bool test_remove( LogicalMatrix &test_matrix, const size_t &index, const bool &expected = true, const bool &display = false )
+{
+    bool result = test_matrix.remove_statement( index );
+    bool equal = ( result == expected );
+
+    if( display || ( result != expected ) )
+    {
+        test_matrix.debug_print();
+        std::cout << "Testing removing index " << index << " from \"" << test_matrix << "\"" << std::endl
+            << "Remove "<< ( result? "passed" : "failed" ) << ( equal? " as expected" : " unexpectedly" )
+            << std::endl << "Test "<< ( equal? "passed" : "FAILED" ) << std::endl << std::endl;
+    }
+
+    return equal;
 }
 
 bool test_evaluate( const LogicalMatrix &test_matrix, const std::map< std::string, bool > &test_map, const std::vector< bool > &expected, const bool &display = false )
@@ -222,6 +264,19 @@ bool test_error( const std::string &tested, const bool &display = false )
     return false;
 }
 
+template< typename Type >
+bool test_equality( const Type &left_value, const Type &right_value, const bool &display = false  )
+{
+    bool result = ( left_value == right_value );
+
+    if( display | !result )
+    {
+        std::cout << "Testing equality of \"" << left_value << "\" with \"" << right_value << "\"" << std::endl << "Test "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
+    }
+
+    return result;
+}
+
 int main( int argc, char const *argv[] )
 {
     std::chrono::high_resolution_clock::time_point time_start = std::chrono::high_resolution_clock::now();
@@ -292,9 +347,9 @@ int main( int argc, char const *argv[] )
             {
                 LogicalMatrix test_matrix( "a & !b, c | d" );
 
-                result &= ( test_matrix == !( !test_matrix ) );
-                result &= ( test_matrix == !test_matrix.NOT() );
-                result &= ( test_matrix == test_matrix.NOT().NOT() );
+                result &= test_equality( test_matrix, !( !test_matrix ) );
+                result &= test_equality( test_matrix, !test_matrix.NOT() );
+                result &= test_equality( test_matrix, test_matrix.NOT().NOT() );
             }
         }
         catch( LogicalMatrix::Logicalstatementexception &e )
@@ -403,18 +458,16 @@ int main( int argc, char const *argv[] )
             {
                 LogicalMatrix test_remove_matrix( "( a & b, c | d ) , ( a | b, c & d, e )" );
 
-                result &= test_remove_matrix.remove_statement( 2 );
+                result &= test_remove( test_remove_matrix, 2 );
                 result &= test( test_remove_matrix, "a & b, c | d, c & d, e" );
-                result &= !test_remove_matrix.remove_statement( 8 );
+                result &= test_remove( test_remove_matrix, 8, false );
                 result &= test( test_remove_matrix, "a & b, c | d, c & d, e" );
-                result &= !test_remove_matrix.remove_statement( 4 );
+                result &= test_remove( test_remove_matrix, 4, false );
                 result &= test( test_remove_matrix, "a & b, c | d, c & d, e" );
-                result &= test_remove_matrix.remove_statement( 3 );
+                result &= test_remove( test_remove_matrix, 3 );
                 result &= test( test_remove_matrix, "a & b, c | d, c & d" );
-                result &= test_remove_matrix.remove_statement( 0 );
+                result &= test_remove( test_remove_matrix, 0 );
                 result &= test( test_remove_matrix, "c | d, c & d" );
-                result &= !LogicalMatrix().remove_statement( 5 );
-                result &= !LogicalMatrix().remove_statement( 0 );
             }
         }
         catch( LogicalMatrix::Logicalstatementexception &e )
@@ -477,7 +530,7 @@ int main( int argc, char const *argv[] )
             {
                 LogicalMatrix test_matrix( "a | b" );
 
-                result &= ( test_matrix.split_statements() == std::vector< LogicalMatrix >( { test_matrix } ) );
+                result &= test_equality( test_matrix.split_statements(), std::vector< LogicalMatrix >( { test_matrix } ) );
 
                 test_matrix.combine_statements();
 
@@ -512,19 +565,22 @@ int main( int argc, char const *argv[] )
 
                 result &= test( test_matrix, "" );
 
-                result &= ( test_matrix == !test_matrix );
+                result &= test_equality( test_matrix, !test_matrix );
 
-                result &= ( test_matrix.split_statements() == std::vector< LogicalMatrix >( { } ) );
-                result &= ( test_matrix.get_unique_identifiers() == std::set< std::string >( { } ) );
+                result &= test_equality( test_matrix.split_statements(), std::vector< LogicalMatrix >( { } ) );
+                result &= test_equality( test_matrix.get_unique_identifiers(), std::set< std::string >( { } ) );
 
-                result &= ( test_matrix == test_matrix.isolate_statement( 0 ) );
-                result &= ( test_matrix == test_matrix.isolate_statement( 5 ) );
+                result &= test_equality( test_matrix, test_matrix.isolate_statement( 0 ) );
+                result &= test_equality( test_matrix, test_matrix.isolate_statement( 5 ) );
 
                 test_matrix.combine_statements();
 
                 result &= test( test_matrix, "" );
 
                 result &= test_evaluate( test_matrix, { }, { } );
+
+                result &= test_remove( test_matrix, 5, false );
+                result &= test_remove( test_matrix, 0, false );
             }
         }
         catch( LogicalMatrix::Logicalstatementexception &e )
