@@ -306,6 +306,11 @@ std::set< std::string > LogicalMatrix::get_unique_identifiers() const
     return result;
 }
 
+LogicalMatrix LogicalMatrix::NOT() const
+{
+    return !(*this);
+}
+
 // Negation
 // !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = !a & !c | !a & !d | b & !c | b & !d
 LogicalMatrix LogicalMatrix::operator !() const
@@ -363,6 +368,13 @@ LogicalMatrix LogicalMatrix::operator !() const
     }
 
     return result_matrix;
+}
+
+LogicalMatrix LogicalMatrix::AND( const LogicalMatrix &other ) const
+{
+    LogicalMatrix new_matrix( *this );
+    new_matrix &= other;
+    return new_matrix;
 }
 
 // AND yealding a new object
@@ -451,6 +463,13 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
     return *this;
 }
 
+LogicalMatrix LogicalMatrix::OR( const LogicalMatrix &other ) const
+{
+    LogicalMatrix new_matrix( *this );
+    new_matrix |= other;
+    return new_matrix;
+}
+
 // OR yealding a new object
 LogicalMatrix LogicalMatrix::operator |( const LogicalMatrix &other ) const
 {
@@ -535,6 +554,13 @@ void LogicalMatrix::OR_helper( const LogicalMatrix &other )
         extend_vector( AND_matrix[ key ].True, data.True, newsize );
         extend_vector( AND_matrix[ key ].False, data.False, newsize );
     }
+}
+
+LogicalMatrix LogicalMatrix::ADD( const LogicalMatrix &other ) const
+{
+    LogicalMatrix new_matrix( *this );
+    new_matrix += other;
+    return new_matrix;
 }
 
 LogicalMatrix LogicalMatrix::operator +( const LogicalMatrix &other ) const
