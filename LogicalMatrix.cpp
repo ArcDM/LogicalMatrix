@@ -310,6 +310,11 @@ std::set< std::string > LogicalMatrix::get_unique_identifiers() const
 // !((a & !b) | (c & d)) = (!a | b) & (!c | !d) = !a & !c | !a & !d | b & !c | b & !d
 LogicalMatrix LogicalMatrix::operator !() const
 {
+    if( empty() )
+    {
+        return LogicalMatrix();
+    }
+
     size_t index, depth, old_size = OR_matrix[ 0 ].size();
     LogicalMatrix result_matrix, cumulative_AND, temp_matrix[ old_size ];
     std::vector< bool > temp_vector;
@@ -497,6 +502,12 @@ void LogicalMatrix::OR_helper( const LogicalMatrix &other )
         return;
     }
 
+    if( empty() )
+    {
+        *this = other;
+        return;
+    }
+
     size_t old_size = OR_matrix[ 0 ].size(),
         other_size = other.OR_matrix[ 0 ].size();
     size_t newsize = old_size + other_size;
@@ -575,6 +586,11 @@ LogicalMatrix LogicalMatrix::operator +=( const LogicalMatrix &other )
 // This function consolidates duplicate AND sets
 void LogicalMatrix::trim()
 {
+    if( empty() )
+    {
+        return;
+    }
+
     size_t index, inner_index, size = OR_matrix[ 0 ].size();
     bool temp_bool;
 
@@ -739,13 +755,16 @@ std::vector< LogicalMatrix > LogicalMatrix::split() const
 
 void LogicalMatrix::combine()
 {
-    std::vector< LogicalMatrix > split_vector = split();
-
-    clear();
-
-    for( auto const& individual_LM : split_vector )
+    if( OR_matrix.size() > 1 )
     {
-        *this &= individual_LM;
+        std::vector< LogicalMatrix > split_vector = split();
+
+        clear();
+
+        for( auto const& individual_LM : split_vector )
+        {
+            *this &= individual_LM;
+        }
     }
 }
 
@@ -768,6 +787,11 @@ bool LogicalMatrix::operator <( const LogicalMatrix &other ) const
 
 std::vector< bool > LogicalMatrix::evaluate( std::map< std::string, bool > identifiers ) const
 {
+    if( empty() )
+    {
+        return {};
+    }
+
     size_t index, inner_index, size = OR_matrix[ 0 ].size(), depth = OR_matrix.size();
     std::vector< bool > truth_table( size, true );
     std::vector< bool > result( depth, false );
@@ -824,7 +848,12 @@ std::string LogicalMatrix::to_string() const
 
 std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg )
 {
-    size_t size = object_arg.OR_matrix[0].size();
+    if( object_arg.empty() )
+    {
+        return output;
+    }
+
+    size_t size = object_arg.OR_matrix[ 0 ].size();
     std::ostringstream AND_streams[ size ];
     std::vector< bool > AND_empty( size, true );
     bool OR_empty, output_empty = true;
@@ -833,7 +862,7 @@ std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg 
     {
         for( size_t index = 0; index < size; ++index )
         {
-            if( data.True[ index ] ^ data.False[ index ] )
+            if( data.True[ index ] | data.False[ index ] )
             {
                 if( AND_empty[ index ] )
                 {
@@ -842,6 +871,11 @@ std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg 
                 else
                 {
                     AND_streams[ index ] << " & ";
+                }
+
+                if( data.True[ index ] & data.False[ index ] )
+                {
+                    AND_streams[ index ] << key << " & ";
                 }
 
                 if( data.False[ index ] )
