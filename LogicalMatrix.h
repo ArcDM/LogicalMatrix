@@ -61,6 +61,7 @@ class LogicalMatrix
         bool operator <( const LogicalMatrix &other ) const;
         bool empty() const;
         void clear();
+        LogicalMatrix isolate_statement( const size_t &index ) const;
         bool remove_statement( const size_t &remove_index );
         std::vector< LogicalMatrix > split() const;
         void combine();

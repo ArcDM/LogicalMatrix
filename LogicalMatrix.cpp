@@ -738,6 +738,20 @@ bool LogicalMatrix::remove_statement( const size_t &remove_index )
     return false;
 }
 
+LogicalMatrix LogicalMatrix::isolate_statement( const size_t &index ) const
+{
+    LogicalMatrix result;
+
+    if( index < OR_matrix.size() )
+    {
+        result.AND_matrix = AND_matrix;
+        result.OR_matrix.push_back( OR_matrix[ index ] );
+        result.trim();
+    }
+
+    return result;
+}
+
 std::vector< LogicalMatrix > LogicalMatrix::split() const
 {
     size_t index, depth = OR_matrix.size();
@@ -745,9 +759,7 @@ std::vector< LogicalMatrix > LogicalMatrix::split() const
 
     for( index = 0; index < depth; ++index )
     {
-        result[ index ].AND_matrix = AND_matrix;
-        result[ index ].OR_matrix.push_back( OR_matrix[ index ] );
-        result[ index ].trim();
+        result[ index ] = isolate_statement( index );
     }
 
     return result;
