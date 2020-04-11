@@ -59,37 +59,37 @@ std::ostream &operator<<( std::ostream &output, const std::map< std::string, boo
 }
 
 // Testing function for a given LogicalMatrix versus the expected result
-bool test( const LogicalMatrix &test_parser, const std::string &expected, const bool &display = false )
+bool test( const LogicalMatrix &test_matrix, const std::string &expected, const bool &display = false )
 {
-    bool result = expected.compare( test_parser.to_string() ) == 0;
+    bool result = expected.compare( test_matrix.to_string() ) == 0;
 
     if( display || !result )
     {
         std::cout << "Result: ";
 
-        if( test_parser.empty() )
+        if( test_matrix.empty() )
         {
             std::cout << "is empty";
         }
         else
         {
-            std::cout << test_parser;
+            std::cout << test_matrix;
         }
 
         std::cout << std::endl << "Test "<< ( result? "passed" : "FAILED" ) << std::endl
             << "Unique Identifiers: "; // spaced to comment out
 
-        if( test_parser.empty() )
+        if( test_matrix.empty() )
         {
             std::cout << "none" << std::endl;
         }
         else
         {
-            std::cout << test_parser.get_unique_identifiers() << std::endl;
+            std::cout << test_matrix.get_unique_identifiers() << std::endl;
         }
 
         std::cout << "Expected: \"" << expected << "\"" << std::endl;
-        test_parser.debug_print();
+        test_matrix.debug_print();
 
         std::cout << std::endl;
     }
@@ -102,9 +102,9 @@ bool test( const std::string &tested, const std::string &expected, const bool &d
 {
     try
     {
-        LogicalMatrix test_parser( tested );
+        LogicalMatrix test_matrix( tested );
 
-        return test( test_parser, expected, display );
+        return test( test_matrix, expected, display );
     }
     catch( LogicalMatrix::Logicalstatementexception &e )
     {
@@ -115,22 +115,27 @@ bool test( const std::string &tested, const std::string &expected, const bool &d
     return false;
 }
 
+bool test_evaluate( const LogicalMatrix &test_matrix, const std::map< std::string, bool > &test_map, const std::vector< bool > &expected, const bool &display = false )
+{
+    std::vector< bool > result_vector = test_matrix.evaluate( test_map );
+    bool result = ( result_vector == expected );
+
+    if( display || !result )
+    {
+        test_matrix.debug_print();
+        std::cout << "Testing \"" << test_matrix << "\" with evaluate function\nusing " << test_map << std::endl
+            << result_vector << std::endl << "Test "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
+    }
+
+    return result;
+}
+
 bool test_evaluate( const std::string &tested, const std::map< std::string, bool > &test_map, const std::vector< bool > &expected, const bool &display = false )
 {
     try
     {
-        LogicalMatrix test_parser( tested );
-        std::vector< bool > result_vector = test_parser.evaluate( test_map );
-        bool result = ( result_vector == expected );
-
-        if( display || !result )
-        {
-            test_parser.debug_print();
-            std::cout << "Testing \"" << tested << "\" with evaluate function\nusing " << test_map << std::endl
-                << result_vector << std::endl << "Test "<< ( result? "passed" : "FAILED" ) << std::endl << std::endl;
-        }
-
-        return result;
+        LogicalMatrix test_matrix( tested );
+        return test_evaluate( test_matrix, test_map, expected, display );
     }
     catch( LogicalMatrix::Logicalstatementexception &e )
     {
@@ -192,15 +197,15 @@ bool test_error( const std::string &tested, const bool &display = false )
 
     try
     {
-        LogicalMatrix test_parser( tested );
+        LogicalMatrix test_matrix( tested );
 
-        if( test_parser.empty() )
+        if( test_matrix.empty() )
         {
             result = "is empty";
         }
         else
         {
-            result = test_parser.to_string();
+            result = test_matrix.to_string();
         }
     }
     catch( LogicalMatrix::Logicalstatementexception &e )
@@ -224,6 +229,7 @@ int main( int argc, char const *argv[] )
 
     if( true )
     {
+        result &= test( "!a & a", "a & !a" );
         result &= test( " d & c & b & a", "a & b & c & d" );
         result &= test( " a & b & c & space space", "a & b & c & space space" );
         result &= test( "NOTaANDb&cORd", "!a & b & c | d" );
@@ -446,6 +452,52 @@ int main( int argc, char const *argv[] )
         result &= test_evaluate( "a | !a", { { "a", false } }, { 1 } );
         result &= test_evaluate( "a | !a", { { "a", true } }, { 1 } );
         result &= test_evaluate( "a | !a", { }, { 0 } );
+    }
+
+    if( true )
+    {
+        LogicalMatrix test_matrix( "a | b" );
+
+        result &= test( test_matrix.split()[ 0 ], "a | b" );
+
+        test_matrix.combine();
+
+        result &= test( test_matrix, "a | b" );
+    }
+
+    if( true )
+    {
+        LogicalMatrix test_matrix( "a | b, c & d, e" );
+
+        std::string split_expected[] = { "a | b", "c & d", "e" };
+
+        std::vector< LogicalMatrix > split_vector = test_matrix.split();
+
+        for( short index = 0; index < 3; ++index )
+        {
+            result &= test( split_vector[ index ], split_expected[ index ] );
+        }
+
+        test_matrix.combine();
+
+        result &= test( test_matrix, "a & c & d & e | b & c & d & e" );
+    }
+
+    if( true )
+    {
+        LogicalMatrix test_matrix;
+
+        result &= test( test_matrix, "" );
+        result &= test( !test_matrix, "" );
+
+        result &= ( test_matrix.split().size() == 0 );
+        result &= ( test_matrix.get_unique_identifiers().size() == 0 );
+
+        test_matrix.combine();
+
+        result &= test( test_matrix, "" );
+
+        result &= test_evaluate( test_matrix, { }, { } );
     }
 
     if( true )
