@@ -316,9 +316,43 @@ int main( int argc, char const *argv[] )
                 for( short index = 0; index < 4; ++index )
                 {
                     result &= test( left_value | right_values[ index ], OR_expected[ index ] )
-                            & test( left_value & right_values[ index ], AND_expected[ index ] )
-                            & test( left_value.OR( right_values[ index ] ), OR_expected[ index ] )
-                            & test( left_value.AND( right_values[ index ] ), AND_expected[ index ] );
+                            & test( left_value & right_values[ index ], AND_expected[ index ] );
+                }
+            }
+
+            if( true )
+            {
+                LogicalMatrix left_value( "a & b" );
+                LogicalMatrix right_values[] = {
+                    LogicalMatrix(),
+                    LogicalMatrix( "c & d" ),
+                    LogicalMatrix( "a & b" ),
+                    LogicalMatrix( "a | a & b | a & c" )
+                };
+
+                std::string OR_expected[] = { "a & b", "a & b | c & d", "a & b | c & d", "c & d | a" };
+
+                for( short index = 0; index < 4; ++index )
+                {
+                    result &= test( left_value.OR( right_values[ index ] ), OR_expected[ index ] );
+                }
+            }
+
+            if( true )
+            {
+                LogicalMatrix left_value( "a & b" );
+                LogicalMatrix right_values[] = {
+                    LogicalMatrix(),
+                    LogicalMatrix( "c & d" ),
+                    LogicalMatrix( "a & b" ),
+                    LogicalMatrix( "a | a & b | a & c" )
+                };
+
+                std::string AND_expected[] = { "a & b", "a & b & c & d", "a & b & c & d", "a & b & c & d" };
+
+                for( short index = 0; index < 4; ++index )
+                {
+                    result &= test( left_value.AND( right_values[ index ] ), AND_expected[ index ] );
                 }
             }
 
@@ -348,8 +382,8 @@ int main( int argc, char const *argv[] )
                 LogicalMatrix test_matrix( "a & !b, c | d" );
 
                 result &= test_equality( test_matrix, !( !test_matrix ) );
-                result &= test_equality( test_matrix, !test_matrix.NOT() );
-                result &= test_equality( test_matrix, test_matrix.NOT().NOT() );
+                result &= test_equality( test_matrix, !LogicalMatrix( "a & !b, c | d" ).NOT() );
+                result &= test_equality( test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT().NOT() );
             }
         }
         catch( LogicalMatrix::Logicalstatementexception &e )
@@ -415,8 +449,26 @@ int main( int argc, char const *argv[] )
 
                 for( short index = 0; index < 5; ++index )
                 {
-                    result &= test( left_value + right_values[ index ], ADD_expected[ index ] )
-                            & test( left_value.ADD( right_values[ index ] ), ADD_expected[ index ] );
+                    result &= test( left_value + right_values[ index ], ADD_expected[ index ] );
+                }
+            }
+
+            if( true )
+            {
+                LogicalMatrix left_value( "a & b" );
+                LogicalMatrix right_values[] = {
+                    LogicalMatrix(),
+                    LogicalMatrix( "c & d" ),
+                    LogicalMatrix( "a & b" ),
+                    LogicalMatrix( "a & c" ),
+                    LogicalMatrix( "a | a & b | a & c" )
+                };
+
+                std::string ADD_expected[] = { "a & b", "a & b, c & d", "a & b, c & d, a & b", "a & b, c & d, a & b, a & c", "a & b, c & d, a & b, a & c, a" };
+
+                for( short index = 0; index < 5; ++index )
+                {
+                    result &= test( left_value.ADD( right_values[ index ] ), ADD_expected[ index ] );
                 }
             }
 

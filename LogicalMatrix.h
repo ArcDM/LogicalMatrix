@@ -52,18 +52,18 @@ class LogicalMatrix
         std::string to_string() const;
         friend std::ostream &operator<<( std::ostream &output, const LogicalMatrix &object_arg );
 
-        LogicalMatrix NOT() const;
+        LogicalMatrix NOT();
         LogicalMatrix operator !() const;
 
-        LogicalMatrix AND( const LogicalMatrix &other ) const;
+        LogicalMatrix AND( const LogicalMatrix &other );
         LogicalMatrix operator &( const LogicalMatrix &other ) const;
         LogicalMatrix operator &=( const LogicalMatrix &other );
 
-        LogicalMatrix OR( const LogicalMatrix &other ) const;
+        LogicalMatrix OR( const LogicalMatrix &other );
         LogicalMatrix operator |( const LogicalMatrix &other ) const;
         LogicalMatrix operator |=( const LogicalMatrix &other );
 
-        LogicalMatrix ADD( const LogicalMatrix &other ) const;
+        LogicalMatrix ADD( const LogicalMatrix &other );
         LogicalMatrix operator +( const LogicalMatrix &other ) const;
         LogicalMatrix operator +=( const LogicalMatrix &other );
 
