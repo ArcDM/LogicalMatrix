@@ -500,6 +500,38 @@ int main( int argc, char const *argv[] )
 
             if( true )
             {
+                LogicalMatrix right_value( "a | b, c & !d" );
+
+                std::string OR_expected[] = { "a | b, a & !b | c & !d, !c | d, e", "a & !b, !c | d | a | b, !c | d | c & !d, e", "a & !b, !c | d, e | a | b, e | c & !d", "a & !b, !c | d, e" };
+                std::string AND_expected[] = { "a & !b, a & !b & c & !d, !c | d, e", "a & !b, a & !c | b & !c | a & d | b & d, c & !c & !d | c & d & !d, e", "a & !b, !c | d, a & e | b & e, c & !d & e", "a & !b, !c | d, e"};
+                std::string ADD_expected[] = { "a | b, c & !d, a & !b, !c | d, e", "a & !b, a | b, c & !d, !c | d, e", "a & !b, !c | d, a | b, c & !d, e", "a & !b, !c | d, e, a | b, c & !d"};
+                std::string NOT_expected[] = { "!a | b, !c | d, e", "a & !b, c & !d, e", "a & !b, !c | d, !e", "a & !b, !c | d, e" };
+
+                for( short index = 0; index < 4; ++index )
+                {
+                    result &= test( LogicalMatrix( "a & !b, !c | d, e" ).OR( right_value, index ), OR_expected[ index ] )
+                            & test( LogicalMatrix( "a & !b, !c | d, e" ).AND( right_value, index ), AND_expected[ index ] )
+                            & test( LogicalMatrix( "a & !b, !c | d, e" ).ADD( right_value, index ), ADD_expected[ index ] )
+                            & test( LogicalMatrix( "a & !b, !c | d, e" ).NOT( index ), NOT_expected[ index ] );
+                }
+
+                result &= test( LogicalMatrix().OR( right_value, 2 ), "" );
+                result &= test( LogicalMatrix().AND( right_value, 4 ), "" );
+                result &= test( LogicalMatrix().ADD( right_value, 6 ), "a | b, c & !d" );
+                result &= test( LogicalMatrix().NOT( 8 ), "" );
+
+                result &= test( LogicalMatrix().OR( right_value, 0 ), "" );
+                result &= test( LogicalMatrix().AND( right_value, 0 ), "" );
+                result &= test( LogicalMatrix().ADD( right_value, 0 ), "a | b, c & !d" );
+                result &= test( LogicalMatrix().NOT( 0 ), "" );
+
+                result &= test( right_value.OR( LogicalMatrix(), 2 ), "a | b, c & !d" );
+                result &= test( right_value.AND( LogicalMatrix(), 1 ), "a | b, c & !d" );
+                result &= test( right_value.ADD( LogicalMatrix(), 0 ), "a | b, c & !d" );
+            }
+
+            if( true )
+            {
                 LogicalMatrix test_matrix( "a & !b, c | d" );
 
                 result &= test_equality( test_matrix, !( !test_matrix ) );
@@ -507,10 +539,6 @@ int main( int argc, char const *argv[] )
                 result &= test_equality( test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT().NOT() );
                 result &= test_equality( test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT( 1 ).NOT( 1 ) );
                 result &= test_equality( !test_matrix, LogicalMatrix( "a & !b, c | d" ).NOT( 0 ).NOT( 1 ) );
-
-                result &= test( LogicalMatrix( "a & !b, !c | d, e" ).NOT( 0 ), "!a | b, !c | d, e" );
-                result &= test( LogicalMatrix( "a & !b, !c | d, e" ).NOT( 1 ), "a & !b, c & !d, e" );
-                result &= test( LogicalMatrix( "a & !b, !c | d, e" ).NOT( 2 ), "a & !b, !c | d, !e" );
             }
 
             if( true )
@@ -631,9 +659,6 @@ int main( int argc, char const *argv[] )
 
                 result &= test_equality( test_matrix, test_matrix.isolate_statement( 0 ) );
                 result &= test_equality( test_matrix, test_matrix.isolate_statement( 5 ) );
-
-                result &= test_equality( test_matrix, test_matrix.NOT( 0 ) );
-                result &= test_equality( test_matrix, test_matrix.NOT( 5 ) );
 
                 test_matrix.combine_statements();
 
