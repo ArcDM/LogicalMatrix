@@ -527,7 +527,7 @@ LogicalMatrix LogicalMatrix::OR( const LogicalMatrix &other, const size_t &state
 
     OR_matrix.erase( OR_matrix.begin() + statement_index );
 
-    return ADD( other, statement_index );
+    return ADD( temp_matrix, statement_index );
 }
 
 // OR yealding a new object
