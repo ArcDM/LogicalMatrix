@@ -57,17 +57,19 @@ class LogicalMatrix
         LogicalMatrix NOT();
         LogicalMatrix NOT( const size_t &statement_index );
 
-        LogicalMatrix AND( const LogicalMatrix &other );
         LogicalMatrix operator &( const LogicalMatrix &other ) const;
         LogicalMatrix operator &=( const LogicalMatrix &other );
+        LogicalMatrix AND( const LogicalMatrix &other );
+        LogicalMatrix AND( const LogicalMatrix &other, const size_t &statement_index );
 
-        LogicalMatrix OR( const LogicalMatrix &other );
         LogicalMatrix operator |( const LogicalMatrix &other ) const;
         LogicalMatrix operator |=( const LogicalMatrix &other );
+        LogicalMatrix OR( const LogicalMatrix &other );
+        LogicalMatrix OR( const LogicalMatrix &other, const size_t &statement_index );
 
-        LogicalMatrix ADD( const LogicalMatrix &other );
         LogicalMatrix operator +( const LogicalMatrix &other ) const;
         LogicalMatrix operator +=( const LogicalMatrix &other );
+        LogicalMatrix ADD( const LogicalMatrix &other, const size_t &statement_index = -1 );
 
         bool operator ==( const LogicalMatrix &other ) const;
         bool operator <( const LogicalMatrix &other ) const;
