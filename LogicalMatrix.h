@@ -68,6 +68,8 @@ class LogicalMatrix
 
         bool operator ==( const LogicalMatrix &other ) const;
         bool operator <( const LogicalMatrix &other ) const;
+        size_t identifier_count() const;
+        size_t statement_count() const;
         bool empty() const;
         void clear();
 

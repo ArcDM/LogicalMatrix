@@ -542,7 +542,7 @@ LogicalMatrix LogicalMatrix::NOT()
 // Negate specific statement
 LogicalMatrix LogicalMatrix::NOT( const size_t &statement_index )
 {
-    if( statement_index >= OR_matrix.size() )
+    if( statement_index >= statement_count() )
     {
         return *this;
     }
@@ -592,7 +592,7 @@ LogicalMatrix LogicalMatrix::operator &=( const LogicalMatrix &other )
         other_size = other.OR_matrix[ 0 ].size();
     size_t newsize = old_size * other_size,
         index, other_index, count;
-    std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.OR_matrix.size() * OR_matrix.size(), std::vector< bool >( newsize ) );
+    std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.statement_count() * statement_count(), std::vector< bool >( newsize ) );
 
     // ensures each TruthTable has the correct length of data
     for( auto& [ key, data ] : AND_matrix )
@@ -659,7 +659,7 @@ LogicalMatrix LogicalMatrix::AND( const LogicalMatrix &other )
 
 LogicalMatrix LogicalMatrix::AND( const LogicalMatrix &other, const size_t &statement_index )
 {
-    if( other.empty() | statement_index >= OR_matrix.size() )
+    if( other.empty() | statement_index >= statement_count() )
     {
         return *this;
     }
@@ -696,7 +696,7 @@ LogicalMatrix LogicalMatrix::operator |=( const LogicalMatrix &other )
     extend_matrix( other );
 
     size_t index = 0, newsize = OR_matrix[ 0 ].size() + other.OR_matrix[ 0 ].size();
-    std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.OR_matrix.size() * OR_matrix.size() );
+    std::vector< std::vector< bool > > temp_OR_vector = std::vector< std::vector< bool > >( other.statement_count() * statement_count() );
 
     for( std::vector< bool > const& statement : OR_matrix )
     {
@@ -723,7 +723,7 @@ LogicalMatrix LogicalMatrix::OR( const LogicalMatrix &other )
 
 LogicalMatrix LogicalMatrix::OR( const LogicalMatrix &other, const size_t &statement_index )
 {
-    if( other.empty() | statement_index >= OR_matrix.size() )
+    if( other.empty() | statement_index >= statement_count() )
     {
         return *this;
     }
@@ -753,7 +753,7 @@ LogicalMatrix LogicalMatrix::ADD( const LogicalMatrix &other, const size_t &stat
         return *this;
     }
 
-    if( OR_matrix.size() == 0 )
+    if( OR_matrix.empty() )
     {
         *this = other;
         return *this;
@@ -761,14 +761,14 @@ LogicalMatrix LogicalMatrix::ADD( const LogicalMatrix &other, const size_t &stat
 
     extend_matrix( other );
 
-    size_t depth = OR_matrix.size(),
+    size_t depth = statement_count(),
         old_size = OR_matrix[ 0 ].size(),
         other_size = other.OR_matrix[ 0 ].size();
     size_t index, newsize = old_size + other_size;
 
     std::vector< bool > temp_vector( other_size, false );
 
-    OR_matrix.reserve( OR_matrix.size() + other.OR_matrix.size() );
+    OR_matrix.reserve( statement_count() + other.statement_count() );
 
     for( std::vector< bool >& statement : OR_matrix )
     {
@@ -805,6 +805,16 @@ bool LogicalMatrix::operator <( const LogicalMatrix &other ) const
     }
 }
 
+size_t LogicalMatrix::identifier_count() const
+{
+    return AND_matrix.size();
+}
+
+size_t LogicalMatrix::statement_count() const
+{
+    return OR_matrix.size();
+}
+
 bool LogicalMatrix::empty() const
 {
     return AND_matrix.empty();
@@ -823,7 +833,7 @@ std::vector< bool > LogicalMatrix::evaluate( std::map< std::string, bool > ident
         return {};
     }
 
-    size_t index, inner_index, size = OR_matrix[ 0 ].size(), depth = OR_matrix.size();
+    size_t index, inner_index, size = OR_matrix[ 0 ].size(), depth = statement_count();
     std::vector< bool > truth_table( size, true );
     std::vector< bool > result( depth, false );
 
@@ -872,7 +882,7 @@ std::vector< bool > LogicalMatrix::evaluate( std::map< std::string, bool > ident
 
 bool LogicalMatrix::remove_statement( const size_t &remove_index )
 {
-    if( remove_index < OR_matrix.size() )
+    if( remove_index < statement_count() )
     {
         OR_matrix.erase( OR_matrix.begin() + remove_index );
         trim();
@@ -887,7 +897,7 @@ LogicalMatrix LogicalMatrix::isolate_statement( const size_t &statement_index ) 
 {
     LogicalMatrix result;
 
-    if( statement_index < OR_matrix.size() )
+    if( statement_index < statement_count() )
     {
         result.AND_matrix = AND_matrix;
         result.OR_matrix.push_back( OR_matrix[ statement_index ] );
@@ -899,7 +909,7 @@ LogicalMatrix LogicalMatrix::isolate_statement( const size_t &statement_index ) 
 
 std::vector< LogicalMatrix > LogicalMatrix::split_statements() const
 {
-    size_t index, depth = OR_matrix.size();
+    size_t index, depth = statement_count();
     std::vector< LogicalMatrix > result = std::vector< LogicalMatrix >( depth );
 
     for( index = 0; index < depth; ++index )
@@ -912,7 +922,7 @@ std::vector< LogicalMatrix > LogicalMatrix::split_statements() const
 
 void LogicalMatrix::combine_statements()
 {
-    if( OR_matrix.size() > 1 )
+    if( statement_count() > 1 )
     {
         std::vector< LogicalMatrix > split_vector = split_statements();
 
