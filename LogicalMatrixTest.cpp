@@ -265,7 +265,7 @@ bool test_error( const std::string &tested, const bool &display = false )
 }
 
 template< typename Type >
-bool test_equality( const Type &left_value, const Type &right_value, const bool &display = false  )
+bool test_equality( const Type &left_value, const Type &right_value, const bool &display = false )
 {
     bool result = ( left_value == right_value );
 
@@ -275,6 +275,11 @@ bool test_equality( const Type &left_value, const Type &right_value, const bool 
     }
 
     return result;
+}
+
+bool test_equality( const size_t &left_value, const int &right_value, const bool &display = false )
+{
+    return test_equality( (int) left_value, right_value, display );
 }
 
 int main( int argc, char const *argv[] )
@@ -488,7 +493,8 @@ int main( int argc, char const *argv[] )
                 {
                     result &= test( left_value | right_values[ index ], OR_expected[ index ] )
                             & test( left_value & right_values[ index ], AND_expected[ index ] )
-                            & test( left_value + right_values[ index ], ADD_expected[ index ] );
+                            & test( left_value + right_values[ index ], ADD_expected[ index ] )
+                            & test_equality( right_values[ index ].statement_count(), index );
                 }
             }
 
@@ -619,6 +625,9 @@ int main( int argc, char const *argv[] )
 
                 result &= test_equality( test_matrix.split_statements(), std::vector< LogicalMatrix >( { test_matrix } ) );
 
+                result &= test_equality( test_matrix.identifier_count(), 2 );
+                result &= test_equality( test_matrix.statement_count(), 1 );
+
                 test_matrix.combine_statements();
 
                 result &= test( test_matrix, "a | b" );
@@ -629,6 +638,9 @@ int main( int argc, char const *argv[] )
                 LogicalMatrix test_matrix( "a | b, c & d, e" );
 
                 std::string split_expected[] = { "a | b", "c & d", "e" };
+
+                result &= test_equality( test_matrix.identifier_count(), 5 );
+                result &= test_equality( test_matrix.statement_count(), 3 );
 
                 std::vector< LogicalMatrix > split_vector = test_matrix.split_statements();
 
@@ -653,6 +665,9 @@ int main( int argc, char const *argv[] )
                 result &= test( test_matrix, "" );
 
                 result &= test_equality( test_matrix, !test_matrix );
+
+                result &= test_equality( test_matrix.identifier_count(), 0 );
+                result &= test_equality( test_matrix.statement_count(), 0 );
 
                 result &= test_equality( test_matrix.split_statements(), std::vector< LogicalMatrix >( { } ) );
                 result &= test_equality( test_matrix.get_unique_identifiers(), std::set< std::string >( { } ) );
