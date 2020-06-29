@@ -143,10 +143,11 @@ bool test( const std::string &tested, const std::string &expected, const bool &d
 
 bool test_remove( LogicalMatrix &test_matrix, const size_t &index, const bool &expected = true, const bool &display = false )
 {
-    bool result = test_matrix.remove_statement( index );
-    bool equal = ( result == expected );
+    bool result = test_matrix.remove_statement( index ),
+        error = ( ( test_matrix.identifier_count() == 0 ) != test_matrix.empty() );
+    bool equal = !error && ( result == expected );
 
-    if( display || ( result != expected ) )
+    if( error || display || result != expected )
     {
         test_matrix.debug_print();
         std::cout << "Testing removing index " << index << " from \"" << test_matrix << "\"" << std::endl
@@ -561,6 +562,10 @@ int main( int argc, char const *argv[] )
                 result &= test( test_remove_matrix, "a & b, c | d, c & d" );
                 result &= test_remove( test_remove_matrix, 0 );
                 result &= test( test_remove_matrix, "c | d, c & d" );
+
+                result &= test_remove( test_remove_matrix, 0 );
+                result &= test_remove( test_remove_matrix, 0 );
+                result &= test_remove( test_remove_matrix, 0, false );
             }
         }
         catch( LogicalMatrix::Logicalstatementexception &e )

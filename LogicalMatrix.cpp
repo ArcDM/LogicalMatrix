@@ -192,8 +192,13 @@ void LogicalMatrix::extend_matrix( const LogicalMatrix &other )
 // This function consolidates duplicate AND sets
 void LogicalMatrix::trim()
 {
-    if( empty() )
+    if( AND_matrix.empty() || OR_matrix.empty() )
     {
+        if( !AND_matrix.empty() || !OR_matrix.empty() )
+        {
+            clear();
+        }
+
         return;
     }
 
